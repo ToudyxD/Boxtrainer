@@ -58,3 +58,44 @@ export function playAnnounce(ctx: AudioContext, when: number): void {
   tone(ctx, when + 0.35, 880, 0.25, 0.4, "triangle");
   tone(ctx, when + 0.7, 660, 0.25, 0.4, "triangle");
 }
+
+let wavUrl: string | undefined;
+
+/** Ansage-Ersatz als WAV-Blob für Tests mit einem <audio>-Element statt WebAudio. */
+export function announceWavUrl(): string {
+  if (wavUrl) return wavUrl;
+  const rate = 22050;
+  const seconds = 1;
+  const count = rate * seconds;
+  const buffer = new ArrayBuffer(44 + count * 2);
+  const view = new DataView(buffer);
+  const text = (offset: number, value: string): void => {
+    for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i));
+  };
+  text(0, "RIFF");
+  view.setUint32(4, 36 + count * 2, true);
+  text(8, "WAVE");
+  text(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  text(36, "data");
+  view.setUint32(40, count * 2, true);
+
+  const freqs = [660, 880, 660];
+  for (let i = 0; i < count; i++) {
+    const t = i / rate;
+    const slot = Math.floor(t / 0.35);
+    const local = t - slot * 0.35;
+    const active = slot < freqs.length && local < 0.25;
+    const envelope = active ? Math.sin((Math.PI * local) / 0.25) : 0;
+    const sample = active ? Math.sin(2 * Math.PI * (freqs[slot] as number) * t) * envelope * 0.5 : 0;
+    view.setInt16(44 + i * 2, Math.round(sample * 32767), true);
+  }
+  wavUrl = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+  return wavUrl;
+}

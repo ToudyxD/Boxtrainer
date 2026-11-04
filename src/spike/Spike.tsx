@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { playAnnounce, playClapper, playGong } from "./sounds";
+import { announceWavUrl, playAnnounce, playClapper, playGong } from "./sounds";
+
+type OutputMode = "webaudio" | "element";
+type AfterMode = "keep" | "suspend" | "close";
 
 type AudioSessionType = "auto" | "playback" | "transient" | "transient-solo" | "ambient" | "play-and-record";
 
@@ -29,12 +32,14 @@ export function Spike() {
   const roundRef = useRef<{ ctxStart: number; perfStart: number; length: number } | null>(null);
 
   const [log, setLog] = useState<LogEntry[]>([]);
-  const [sessionType, setSessionType] = useState<AudioSessionType>("playback");
+  const [sessionType, setSessionType] = useState<AudioSessionType>("ambient");
   const [wakeActive, setWakeActive] = useState(false);
   const [wakeSeconds, setWakeSeconds] = useState(0);
   const [roundLength, setRoundLength] = useState(180);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [ctxState, setCtxState] = useState("–");
+  const [output, setOutput] = useState<OutputMode>("webaudio");
+  const [after, setAfter] = useState<AfterMode>("keep");
 
   const addLog = useCallback((text: string) => {
     const at = new Date().toLocaleTimeString("de-DE");
@@ -114,6 +119,39 @@ export function Spike() {
     }
   }, [addLog]);
 
+  const playAnnouncement = useCallback(async () => {
+    const label = `${output}, Typ ${sessionType}, danach ${after}`;
+    if (output === "element") {
+      const el = new Audio(announceWavUrl());
+      el.addEventListener("ended", () => addLog("Element: Wiedergabe beendet"));
+      try {
+        await el.play();
+        addLog(`Ansage über <audio> (${label})`);
+      } catch (err) {
+        addLog(`<audio> fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      return;
+    }
+
+    const ctx = ensureCtx();
+    playAnnounce(ctx, ctx.currentTime + 0.05);
+    addLog(`Ansage über WebAudio (${label})`);
+    if (after === "keep") return;
+
+    window.setTimeout(() => {
+      const finish = after === "suspend" ? ctx.suspend() : ctx.close();
+      finish
+        .then(() => {
+          if (after === "close" && ctxRef.current === ctx) {
+            ctxRef.current = null;
+            setCtxState("closed");
+          }
+          addLog(`Context nach Ansage: ${after === "suspend" ? "suspendiert" : "geschlossen"}. Kommt die Musik zurück?`);
+        })
+        .catch((err: unknown) => addLog(`Context ${after} fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`));
+    }, 1800);
+  }, [output, sessionType, after, ensureCtx, addLog]);
+
   const startRound = useCallback(() => {
     const ctx = ensureCtx();
     const lead = 1;
@@ -192,16 +230,23 @@ export function Spike() {
             ))}
           </select>
         </label>
+        <label>
+          Ausgabe
+          <select value={output} onChange={(e) => setOutput(e.target.value as OutputMode)}>
+            <option value="webaudio">WebAudio (wie die App)</option>
+            <option value="element">&lt;audio&gt;-Element</option>
+          </select>
+        </label>
+        <label>
+          Nach der Ansage (nur WebAudio)
+          <select value={after} onChange={(e) => setAfter(e.target.value as AfterMode)}>
+            <option value="keep">Context weiterlaufen lassen</option>
+            <option value="suspend">Context suspendieren</option>
+            <option value="close">Context schließen</option>
+          </select>
+        </label>
         <div className="row">
-          <button
-            onClick={() => {
-              const ctx = ensureCtx();
-              playAnnounce(ctx, ctx.currentTime + 0.05);
-              addLog(`Ansage (Typ ${sessionType})`);
-            }}
-          >
-            Ansage
-          </button>
+          <button onClick={() => void playAnnouncement()}>Ansage</button>
           <button
             onClick={() => {
               const ctx = ensureCtx();

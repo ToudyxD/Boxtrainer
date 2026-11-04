@@ -36,7 +36,7 @@ export class WebAudioSink implements AudioSink, Clock {
 
   constructor(options: WebAudioSinkOptions) {
     this.baseUrl = options.clipBaseUrl;
-    this.sessionType = options.sessionType ?? "playback";
+    this.sessionType = options.sessionType ?? "ambient";
     this.gap = options.clipGapSeconds ?? 0.05;
   }
 
