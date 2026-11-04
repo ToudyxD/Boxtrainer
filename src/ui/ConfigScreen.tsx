@@ -19,7 +19,16 @@ export interface StartRequest {
   seed: number;
   style: Style;
   level: Level;
+  pauseScale: number;
 }
+
+type Pace = "short" | "normal" | "long";
+
+const PACES: Record<Pace, { label: string; scale: number }> = {
+  short: { label: "Kurz (dichte Ansagen)", scale: 0.5 },
+  normal: { label: "Normal", scale: 1 },
+  long: { label: "Lang (viel Zeit pro Kombi)", scale: 1.6 },
+};
 
 interface Config {
   type: TrainingType;
@@ -28,6 +37,7 @@ interface Config {
   style: Style;
   level: Level;
   focus: string;
+  pace: Pace;
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -37,6 +47,7 @@ const DEFAULT_CONFIG: Config = {
   style: "kickboxing",
   level: 2,
   focus: "",
+  pace: "normal",
 };
 
 const LEVEL_LABELS: Record<Level, string> = { 1: "Grundlagen", 2: "Aufbau", 3: "Fortgeschritten" };
@@ -140,6 +151,16 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
           </select>
         </label>
         <label>
+          Ansage-Pausen
+          <select value={config.pace} onChange={(e) => update({ pace: e.target.value as Pace })}>
+            {Object.entries(PACES).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           Level
           <select value={config.level} onChange={(e) => update({ level: Number(e.target.value) as Level })}>
             {([1, 2, 3] as const).map((l) => (
@@ -193,7 +214,13 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
               </li>
             ))}
           </ol>
-          <button onClick={() => onStart({ training: result.training, seed, style: config.style, level: config.level })}>
+          <button onClick={() => onStart({
+                training: result.training,
+                seed,
+                style: config.style,
+                level: config.level,
+                pauseScale: PACES[config.pace]?.scale ?? 1,
+              })}>
             Starten
           </button>
         </section>

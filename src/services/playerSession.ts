@@ -14,6 +14,7 @@ export interface PlayerSessionConfig {
   style: Style;
   level: Level;
   seed: number;
+  pauseScale: number;
 }
 
 export interface BeginResult extends PreloadResult {
@@ -42,7 +43,7 @@ export class PlayerSession {
   /** Aus einer Nutzergeste aufrufen: entsperrt Audio, lädt Clips, startet die Einheit. */
   async begin(onProgress?: (done: number, total: number) => void): Promise<BeginResult> {
     if (this.player) throw new Error("Session wurde bereits gestartet");
-    const { training, library, style, level, seed } = this.config;
+    const { training, library, style, level, seed, pauseScale } = this.config;
 
     await this.sink.unlock();
     const preload = await this.sink.preload(
@@ -61,6 +62,7 @@ export class PlayerSession {
       seed,
       style,
       level,
+      pauseScale,
       comboSeconds: comboSecondsFrom((clip) => this.sink.durationOf(clip)),
     });
     this.player = new Player(timeline, { clock: this.sink, sink: this.sink, training, library });

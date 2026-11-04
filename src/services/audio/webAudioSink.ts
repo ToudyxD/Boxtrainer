@@ -1,6 +1,7 @@
 import type { Cue } from "../../domain/cues";
 import type { AudioSink, Clock } from "../../domain/player";
 import { PLACEHOLDER_SECONDS, beep, clapper, gong, placeholder, type Scheduled } from "./synth";
+import { findSpeechBounds, type SpeechBounds } from "./trim";
 
 export type AudioSessionType = "auto" | "playback" | "transient" | "transient-solo" | "ambient" | "play-and-record";
 
@@ -27,6 +28,7 @@ export class WebAudioSink implements AudioSink, Clock {
   private ctx: AudioContext | undefined;
   private master: GainNode | undefined;
   private readonly buffers = new Map<string, AudioBuffer>();
+  private readonly bounds = new Map<string, SpeechBounds>();
   private readonly missing = new Set<string>();
   private scheduled: Scheduled[] = [];
   private stateListener: ((state: AudioContextState) => void) | undefined;
@@ -37,7 +39,7 @@ export class WebAudioSink implements AudioSink, Clock {
   constructor(options: WebAudioSinkOptions) {
     this.baseUrl = options.clipBaseUrl;
     this.sessionType = options.sessionType ?? "playback";
-    this.gap = options.clipGapSeconds ?? 0.05;
+    this.gap = options.clipGapSeconds ?? 0.02;
   }
 
   get state(): AudioContextState | "locked" {
@@ -77,8 +79,10 @@ export class WebAudioSink implements AudioSink, Clock {
     return this.requireContext().currentTime;
   }
 
+  /** Länge der reinen Sprache ohne führende und nachlaufende Stille. */
   durationOf(clip: string): number | undefined {
-    return this.buffers.get(clip)?.duration;
+    const b = this.bounds.get(clip);
+    return b ? b.end - b.start : undefined;
   }
 
   async preload(ids: readonly string[], onProgress?: (done: number, total: number) => void): Promise<PreloadResult> {
@@ -92,7 +96,10 @@ export class WebAudioSink implements AudioSink, Clock {
         try {
           const res = await fetch(`${this.baseUrl}${id}.mp3`);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          this.buffers.set(id, await ctx.decodeAudioData(await res.arrayBuffer()));
+          const buffer = await ctx.decodeAudioData(await res.arrayBuffer());
+          const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c));
+          this.bounds.set(id, findSpeechBounds(channels, buffer.sampleRate));
+          this.buffers.set(id, buffer);
           this.missing.delete(id);
         } catch {
           this.missing.add(id);
@@ -123,24 +130,27 @@ export class WebAudioSink implements AudioSink, Clock {
         cue.clips.forEach((id, i) => this.playClip(ctx, out, id, at + i * cue.intervalSeconds));
         return;
       case "speech": {
+        const clips = cue.fallback && !cue.clips.every((id) => this.buffers.has(id)) ? cue.fallback : cue.clips;
         let t = at;
-        for (const id of cue.clips) t += this.playClip(ctx, out, id, t);
+        for (const id of clips) t += this.playClip(ctx, out, id, t);
       }
     }
   }
 
   private playClip(ctx: AudioContext, out: AudioNode, id: string, at: number): number {
     const buffer = this.buffers.get(id);
-    if (!buffer) {
+    const range = this.bounds.get(id);
+    if (!buffer || !range) {
       this.track(placeholder(ctx, out, at));
       return PLACEHOLDER_SECONDS;
     }
+    const length = range.end - range.start;
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     src.connect(out);
-    src.start(at);
+    src.start(at, range.start, length);
     this.track([{ node: src, start: at }]);
-    return buffer.duration + this.gap;
+    return length + this.gap;
   }
 
   cancelPending(): void {

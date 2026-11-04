@@ -6,7 +6,7 @@ export type Cue =
   | { kind: "gong" }
   | { kind: "beep" }
   | { kind: "clapper" }
-  | { kind: "speech"; clips: string[] }
+  | { kind: "speech"; clips: string[]; fallback?: string[] }
   | { kind: "countdown"; clips: string[]; intervalSeconds: number };
 
 export interface ClipSpec {
@@ -53,6 +53,7 @@ export const clipId = {
   phrase: (key: PhraseKey): string => `phrase-${key}`,
   block: (type: BlockType): string => `block-${type}`,
   count: (n: number): string => `count-${n}`,
+  combo: (id: string): string => `combo-${id}`,
   exercise: (id: string): string => `ex-${id}`,
   cue: (exerciseId: string, index: number): string => `cue-${exerciseId}-${index}`,
   theme: (theme: string): string => `theme-${slug(theme)}`,
@@ -72,6 +73,7 @@ export function buildClipManifest(library: Library): ClipSpec[] {
     add({ id: clipId.phrase(key), text: p.text });
   }
   COUNTDOWN_WORDS.forEach((word, i) => add({ id: clipId.count(i + 1), text: word }));
+  for (const c of library.combos) add({ id: clipId.combo(c.id), text: comboAnnouncement(c, library.techniques) });
   for (const [type, label] of Object.entries(BLOCK_LABELS) as Array<[BlockType, string]>) {
     add({ id: clipId.block(type), text: label });
   }
@@ -132,7 +134,11 @@ export function cueFor(event: TimelineEvent, ctx: CueContext): Cue | undefined {
     case "combo": {
       const combo = ctx.library.combos.find((c) => c.id === event.comboId);
       if (!combo) throw new Error(`Unbekannte Kombi ${event.comboId}`);
-      return speech(combo.techniqueIds.map(clipId.technique));
+      return {
+        kind: "speech",
+        clips: [clipId.combo(combo.id)],
+        fallback: combo.techniqueIds.map(clipId.technique),
+      };
     }
     case "defense":
       return speech([clipId.technique(event.techniqueId)]);
@@ -183,12 +189,14 @@ export function textFor(event: TimelineEvent, ctx: CueContext): string | undefin
   }
 }
 
-/** Kombi-Dauer aus gemessenen Clip-Längen; fehlt ein Clip, greift die Schätzung. */
+/** Kombi-Dauer aus gemessenen Clip-Längen: ganzer Kombi-Clip, sonst Summe der Einzel-Clips, sonst Schätzung. */
 export function comboSecondsFrom(
   durationOf: (clip: string) => number | undefined,
   gapSeconds = 0.08,
 ): (combo: Combo) => number {
   return (combo) => {
+    const whole = durationOf(clipId.combo(combo.id));
+    if (whole !== undefined) return whole;
     const durations = combo.techniqueIds.map((id) => durationOf(clipId.technique(id)));
     if (durations.some((d) => d === undefined)) return estimateComboSeconds(combo);
     return (durations as number[]).reduce((a, b) => a + b, 0) + gapSeconds * (durations.length - 1);

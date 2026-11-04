@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_EQUIPMENT_PROFILES, loadLibrary } from "../content";
+import { comboAnnouncement } from "./content";
 import { buildClipManifest, clipId, comboSecondsFrom, cueFor, slug, type Cue } from "./cues";
 import { generateTraining } from "./generator";
 import type { Training } from "./models";
@@ -319,7 +320,8 @@ describe("Cues und Clips", () => {
       for (const e of timeline.events) {
         const cue = cueFor(e, ctx);
         if (cue?.kind !== "speech" && cue?.kind !== "countdown") continue;
-        for (const clip of cue.clips) expect(ids.has(clip), `${type}: ${clip}`).toBe(true);
+        const all = cue.kind === "speech" ? [...cue.clips, ...(cue.fallback ?? [])] : cue.clips;
+        for (const clip of all) expect(ids.has(clip), `${type}: ${clip}`).toBe(true);
       }
     }
   });
@@ -332,6 +334,25 @@ describe("Cues und Clips", () => {
     expect(manifest.find((m) => m.id === clipId.count(10))?.text).toBe("Zehn");
   });
 
+  it("Manifest enthält zu jeder Kombi einen Clip mit dem Ansagetext", () => {
+    const manifest = buildClipManifest(library);
+    for (const c of library.combos) {
+      const clip = manifest.find((m) => m.id === clipId.combo(c.id));
+      expect(clip?.text, c.id).toBe(comboAnnouncement(c, library.techniques));
+    }
+  });
+
+  it("Kombi-Cue nutzt den ganzen Clip und hat die Einzel-Clips als Rückfall", () => {
+    const combo = library.combos.find((c) => c.id === "c-jab-cross-lowkick")!;
+    const event = { kind: "combo", at: 0, blockId: "b", roundIndex: 0, comboId: combo.id, durationSec: 1 } as const;
+    const cue = cueFor(event, { library, blocks: new Map() });
+    expect(cue).toEqual({
+      kind: "speech",
+      clips: [clipId.combo(combo.id)],
+      fallback: ["tech-jab", "tech-cross", "tech-lowkick"],
+    });
+  });
+
   it("slug wandelt Umlaute und Satzzeichen um", () => {
     expect(slug("Körper und Kopf")).toBe("koerper-und-kopf");
     expect(slug("Jab als Türöffner")).toBe("jab-als-tueroeffner");
@@ -339,8 +360,9 @@ describe("Cues und Clips", () => {
 
   it("comboSecondsFrom nutzt gemessene Längen und fällt sonst auf die Schätzung zurück", () => {
     const combo = library.combos.find((c) => c.id === "c-jab-cross")!;
-    const measured = comboSecondsFrom(() => 0.5, 0.1)(combo);
+    const measured = comboSecondsFrom((clip) => (clip.startsWith("combo-") ? undefined : 0.5), 0.1)(combo);
     expect(measured).toBeCloseTo(1.1, 9);
+    expect(comboSecondsFrom((clip) => (clip === clipId.combo(combo.id) ? 1.4 : 0.5))(combo)).toBe(1.4);
     expect(comboSecondsFrom(() => undefined)(combo)).toBe(estimateComboSeconds(combo));
   });
 });

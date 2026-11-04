@@ -160,6 +160,30 @@ describe("buildTimeline", () => {
       expect(count(3)).toBeGreaterThan(count(1));
     });
 
+    it("kürzere pauseScale erzeugt mehr Ansagen, längere weniger", () => {
+      const count = (pauseScale: number) =>
+        announcements(buildTimeline(t, library, { seed: 11, style: "kickboxing", level: 2, pauseScale }).events).filter(
+          (a) => a.blockId === bagBlock.id,
+        ).length;
+      expect(count(0.5)).toBeGreaterThan(count(1));
+      expect(count(1)).toBeGreaterThan(count(1.6));
+    });
+
+    it.each([0, -1, Number.NaN])("lehnt pauseScale %s ab", (pauseScale) => {
+      expect(() => buildTimeline(t, library, { seed: 1, style: "kickboxing", level: 2, pauseScale })).toThrow(RangeError);
+    });
+
+    it("hält bei Standard-Dichte 2 im Mittel höchstens 7 s von Start zu Start", () => {
+      const tl = build(t);
+      const gaps: number[] = [];
+      for (const seg of roundsOf(tl, bagBlock)) {
+        const list = announcements(tl.events).filter((a) => a.blockId === bagBlock.id && a.roundIndex === seg.roundIndex);
+        for (let i = 1; i < list.length; i++) gaps.push(list[i]!.at - list[i - 1]!.at);
+      }
+      const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+      expect(mean).toBeLessThan(7);
+    });
+
     it("sagt am Anfang der ersten Runde das Fokus-Thema an", () => {
       const tech = generateTraining(
         { type: "technique", equipment: gym, targetMinutes: 75, style: "kickboxing", level: 2, seed: 4, focusTheme: "Lowkick setzen", history: [] },

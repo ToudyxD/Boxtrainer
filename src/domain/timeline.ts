@@ -6,7 +6,7 @@ export const BLOCK_INTRO_LEAD = 3;
 export const TRANSITION_SECONDS = BLOCK_INTRO_LEAD + COUNTDOWN_SECONDS;
 export const PUSH_BEFORE_END = 30;
 export const CLAPPER_BEFORE_END = 10;
-export const ANNOUNCE_BUFFER = 1;
+export const ANNOUNCE_BUFFER = 0.5;
 export const TAIL_GUARD = 2;
 const PUSH_SECONDS = 3;
 const CLAPPER_SECONDS = 1.5;
@@ -17,7 +17,7 @@ const FREESTYLE_SECONDS = 10;
 const DEFENSE_SECONDS = 0.8;
 const FREESTYLE_CHANCE = 0.04;
 const DEFENSE_CHANCE = 0.12;
-const PAUSE_BASE: Record<1 | 2 | 3, number> = { 1: 8, 2: 5, 3: 2.5 };
+const PAUSE_BASE: Record<1 | 2 | 3, number> = { 1: 6, 2: 3.5, 3: 1.8 };
 
 const COMBAT: ReadonlySet<BlockType> = new Set(["shadow", "bag"]);
 const DRIVEN: ReadonlySet<BlockType> = new Set(["shadow", "bag", "conditioning", "circuit"]);
@@ -64,6 +64,8 @@ export interface TimelineOptions {
   style: Style;
   level: Level;
   comboSeconds?: (combo: Combo) => number;
+  /** Faktor auf die Pause zwischen Ansagen (kleiner = dichter). Standard 1. */
+  pauseScale?: number;
 }
 
 export function estimateComboSeconds(combo: Combo): number {
@@ -76,6 +78,7 @@ interface Ctx {
   exercises: Map<string, Exercise>;
   defenseIds: string[];
   comboSeconds: (combo: Combo) => number;
+  pauseScale: number;
 }
 
 interface ComboBag {
@@ -165,13 +168,16 @@ function workEvents(block: Block, roundIndex: number, start: number, bag: ComboB
     if (rel + len > L - TAIL_GUARD) break;
 
     events.push(make(at(rel)));
-    const pause = PAUSE_BASE[block.announceDensity] * (0.6 + 0.8 * ctx.rng.next());
+    const pause = PAUSE_BASE[block.announceDensity] * ctx.pauseScale * (0.6 + 0.8 * ctx.rng.next());
     cursor = rel + len + ANNOUNCE_BUFFER + pause;
   }
   return events;
 }
 
 export function buildTimeline(training: Training, library: Library, options: TimelineOptions): Timeline {
+  if (options.pauseScale !== undefined && !(options.pauseScale > 0)) {
+    throw new RangeError(`pauseScale muss größer 0 sein: ${options.pauseScale}`);
+  }
   const defenseIds = library.techniques
     .filter((t) => t.category === "defense" && t.styles.includes(options.style) && t.level <= options.level)
     .map((t) => t.id);
@@ -181,6 +187,7 @@ export function buildTimeline(training: Training, library: Library, options: Tim
     exercises: new Map(library.exercises.map((e) => [e.id, e])),
     defenseIds,
     comboSeconds: options.comboSeconds ?? estimateComboSeconds,
+    pauseScale: options.pauseScale ?? 1,
   };
 
   const events: TimelineEvent[] = [];
