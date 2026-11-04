@@ -32,7 +32,7 @@ export function Spike() {
   const roundRef = useRef<{ ctxStart: number; perfStart: number; length: number } | null>(null);
 
   const [log, setLog] = useState<LogEntry[]>([]);
-  const [sessionType, setSessionType] = useState<AudioSessionType>("ambient");
+  const [sessionType, setSessionType] = useState<AudioSessionType>("playback");
   const [wakeActive, setWakeActive] = useState(false);
   const [wakeSeconds, setWakeSeconds] = useState(0);
   const [roundLength, setRoundLength] = useState(180);
