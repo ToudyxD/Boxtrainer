@@ -97,14 +97,18 @@ function eligibleCombos(library: Library, style: Style, level: Level): Combo[] {
   return library.combos.filter((c) => c.styles.includes(style) && c.level <= level + 1);
 }
 
-function resolveFocusTheme(input: GeneratorInput, library: Library, rng: Rng): string | undefined {
-  const themes = [
+export function availableThemes(library: Library, style: Style, level: Level): string[] {
+  return [
     ...new Set(
-      eligibleCombos(library, input.style, input.level)
-        .filter((c) => c.level <= input.level)
+      eligibleCombos(library, style, level)
+        .filter((c) => c.level <= level)
         .flatMap((c) => c.themes),
     ),
   ];
+}
+
+function resolveFocusTheme(input: GeneratorInput, library: Library, rng: Rng): string | undefined {
+  const themes = availableThemes(library, input.style, input.level);
 
   if (input.focusTheme !== undefined) {
     if (!themes.includes(input.focusTheme)) {
