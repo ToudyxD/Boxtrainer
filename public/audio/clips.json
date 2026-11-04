@@ -1,0 +1,627 @@
+{
+  "voiceId": "0mcPIzJoTA0YLHyM2tXG",
+  "model": "eleven_multilingual_v2",
+  "clips": {
+    "count-10": {
+      "hash": "667b1abf5ea3b540"
+    },
+    "phrase-push": {
+      "hash": "b4805fcc348e962e"
+    },
+    "tech-lowkick": {
+      "hash": "5a93ef12b0d80d50"
+    },
+    "tech-lowkick-front": {
+      "hash": "93be615611dd0889"
+    },
+    "tech-slip": {
+      "hash": "381ad13fc0aa3466"
+    },
+    "block-circuit": {
+      "hash": "191ad6998bf405b7"
+    },
+    "block-bag": {
+      "hash": "97da3e3a590a9996"
+    },
+    "block-cooldown": {
+      "hash": "5e07313bbc966f0d"
+    },
+    "block-conditioning": {
+      "hash": "e578bf83e45d699f"
+    },
+    "block-core": {
+      "hash": "65102700dda251c7"
+    },
+    "block-drill": {
+      "hash": "109b4eea7a941d1c"
+    },
+    "block-shadow": {
+      "hash": "a69f1d486467bc47"
+    },
+    "block-strength": {
+      "hash": "9098be533d37e999"
+    },
+    "block-warmup": {
+      "hash": "89ad1790b6ca3037"
+    },
+    "count-1": {
+      "hash": "c926e3838e4be231"
+    },
+    "count-2": {
+      "hash": "c4b7579352761b90"
+    },
+    "count-3": {
+      "hash": "c0be37ed76783f39"
+    },
+    "count-5": {
+      "hash": "859b497b28717186"
+    },
+    "count-4": {
+      "hash": "76fff285b70bf612"
+    },
+    "count-6": {
+      "hash": "988135c28fdafed0"
+    },
+    "count-7": {
+      "hash": "c181afbe04738d89"
+    },
+    "count-8": {
+      "hash": "e3c225402c12b408"
+    },
+    "count-9": {
+      "hash": "428cf59c9d86ccc3"
+    },
+    "cue-arm-circles-0": {
+      "hash": "c46fc996235453db"
+    },
+    "cue-arm-circles-1": {
+      "hash": "3263f17fe1066705"
+    },
+    "cue-back-squat-0": {
+      "hash": "8b9014912f037dda"
+    },
+    "cue-back-squat-1": {
+      "hash": "d2c416161073167a"
+    },
+    "cue-bicycle-crunch-0": {
+      "hash": "f79551ae3101276a"
+    },
+    "cue-bicycle-crunch-1": {
+      "hash": "ccb0e81f732425d2"
+    },
+    "cue-bulgarian-split-squat-0": {
+      "hash": "97abe667da6a34e2"
+    },
+    "cue-bulgarian-split-squat-1": {
+      "hash": "c1ebcf09c1c56d3f"
+    },
+    "cue-burpee-0": {
+      "hash": "97f0a9130439d135"
+    },
+    "cue-burpee-1": {
+      "hash": "9348cb2dbd334b7a"
+    },
+    "cue-calf-stretch-1": {
+      "hash": "22aeccf394e558a9"
+    },
+    "cue-calf-stretch-0": {
+      "hash": "c4bb3b563a55c2c3"
+    },
+    "cue-cat-cow-0": {
+      "hash": "796da3ef6521565b"
+    },
+    "cue-cat-cow-1": {
+      "hash": "8b193fb7e1e6cba5"
+    },
+    "cue-childs-pose-0": {
+      "hash": "5beaf80483ca0646"
+    },
+    "cue-childs-pose-1": {
+      "hash": "ce53bd34b6f44e94"
+    },
+    "cue-dead-bug-0": {
+      "hash": "d6e99e47fea67d35"
+    },
+    "cue-dead-bug-1": {
+      "hash": "656ae0c47eab6661"
+    },
+    "cue-deadlift-0": {
+      "hash": "380aa960ddea803a"
+    },
+    "cue-deadlift-1": {
+      "hash": "fa0b34c07761872b"
+    },
+    "cue-deadlift-2": {
+      "hash": "5f15d8e92cee12ea"
+    },
+    "cue-drill-hook-uppercut-0": {
+      "hash": "2d47181c8582b04f"
+    },
+    "cue-drill-hook-uppercut-1": {
+      "hash": "4e7190b16e86ce52"
+    },
+    "cue-drill-jab-slow-0": {
+      "hash": "0da5ea2709eb7ba1"
+    },
+    "cue-drill-jab-slow-1": {
+      "hash": "7b2a12772196d7c9"
+    },
+    "cue-drill-knee-0": {
+      "hash": "868950a410674b57"
+    },
+    "cue-drill-jab-slow-2": {
+      "hash": "a6e6f52d7ef9d7b5"
+    },
+    "cue-drill-knee-2": {
+      "hash": "899510f523d03fc7"
+    },
+    "cue-drill-knee-1": {
+      "hash": "b8de6795bc162d40"
+    },
+    "cue-drill-lowkick-0": {
+      "hash": "f2418095095290aa"
+    },
+    "cue-drill-lowkick-1": {
+      "hash": "2dcf7eccb19c58b7"
+    },
+    "cue-drill-lowkick-2": {
+      "hash": "899510f523d03fc7"
+    },
+    "cue-drill-one-two-slow-0": {
+      "hash": "50b9072490efad1b"
+    },
+    "cue-drill-one-two-slow-1": {
+      "hash": "75e46347c24f95ce"
+    },
+    "cue-drill-parry-counter-0": {
+      "hash": "d46089fcc6887496"
+    },
+    "cue-drill-parry-counter-1": {
+      "hash": "2245419f1d2a6569"
+    },
+    "cue-drill-slip-counter-0": {
+      "hash": "ea0301b3a27112a0"
+    },
+    "cue-drill-slip-counter-1": {
+      "hash": "a17ca6401561950f"
+    },
+    "cue-drill-slip-counter-2": {
+      "hash": "a50d50edc6387f99"
+    },
+    "cue-drill-teep-0": {
+      "hash": "0727604e49b65884"
+    },
+    "cue-drill-teep-1": {
+      "hash": "47ab07df80d73119"
+    },
+    "cue-dumbbell-press-0": {
+      "hash": "5a385c73b3e5eadc"
+    },
+    "cue-dumbbell-press-1": {
+      "hash": "8893f3dc42fd2e08"
+    },
+    "cue-dumbbell-row-0": {
+      "hash": "37fab3c82c17c4c0"
+    },
+    "cue-glute-bridge-0": {
+      "hash": "b0432683d311d6f7"
+    },
+    "cue-dumbbell-row-1": {
+      "hash": "784aa7db79d4ec2e"
+    },
+    "cue-glute-bridge-1": {
+      "hash": "0751bcca04e243b9"
+    },
+    "cue-goblet-squat-0": {
+      "hash": "c01cb4b5be428a4f"
+    },
+    "cue-goblet-squat-1": {
+      "hash": "487f02a63fd9e2a4"
+    },
+    "cue-hamstring-stretch-0": {
+      "hash": "37fab3c82c17c4c0"
+    },
+    "cue-hamstring-stretch-1": {
+      "hash": "7c5a1291739cd247"
+    },
+    "cue-hanging-knee-raise-0": {
+      "hash": "b4060c9332931906"
+    },
+    "cue-hanging-knee-raise-1": {
+      "hash": "1219f5ce6baf6ba3"
+    },
+    "cue-high-knees-0": {
+      "hash": "f8c79cd920e78b22"
+    },
+    "cue-high-knees-1": {
+      "hash": "a34d3910e6ec14dd"
+    },
+    "cue-hip-circles-0": {
+      "hash": "bfe815f44e590e5f"
+    },
+    "cue-hip-circles-1": {
+      "hash": "a1064a7131cfc041"
+    },
+    "cue-hip-flexor-stretch-0": {
+      "hash": "eb75c96eef8ec51a"
+    },
+    "cue-hip-flexor-stretch-1": {
+      "hash": "869263c55c6a55d4"
+    },
+    "cue-hollow-hold-0": {
+      "hash": "4a1aeca6b6bbd387"
+    },
+    "cue-hollow-hold-1": {
+      "hash": "1ffc7ef4b49f516d"
+    },
+    "cue-inchworm-0": {
+      "hash": "21939ddd32b4289d"
+    },
+    "cue-inchworm-1": {
+      "hash": "92d10434ea7707b2"
+    },
+    "cue-jump-rope-0": {
+      "hash": "61e62ad4ce995c78"
+    },
+    "cue-jumping-jacks-0": {
+      "hash": "072b6c0f8e4ad22d"
+    },
+    "cue-jump-rope-1": {
+      "hash": "9285faea0280a129"
+    },
+    "cue-jumping-jacks-1": {
+      "hash": "af53a056622a33a6"
+    },
+    "cue-kettlebell-swing-0": {
+      "hash": "589f0615b49a8526"
+    },
+    "cue-kettlebell-swing-1": {
+      "hash": "fa0b34c07761872b"
+    },
+    "cue-kettlebell-swing-2": {
+      "hash": "b70b43689d27d918"
+    },
+    "cue-leg-swings-0": {
+      "hash": "829e389cbcf25fed"
+    },
+    "cue-leg-swings-1": {
+      "hash": "6f7660d4d55a8105"
+    },
+    "cue-medicine-ball-slam-0": {
+      "hash": "a585ce2b59ed8d26"
+    },
+    "cue-medicine-ball-slam-1": {
+      "hash": "10f900e15a8dbabd"
+    },
+    "cue-mountain-climbers-1": {
+      "hash": "18b8b7b5e842a5c1"
+    },
+    "cue-mountain-climbers-0": {
+      "hash": "d3f6741ae386fe6e"
+    },
+    "cue-neck-stretch-0": {
+      "hash": "99401e1f2d7fd436"
+    },
+    "cue-neck-stretch-1": {
+      "hash": "48765c794f54e85c"
+    },
+    "cue-plank-0": {
+      "hash": "783ac38309b8a9d2"
+    },
+    "cue-plank-1": {
+      "hash": "7b5458bfe9151395"
+    },
+    "cue-pull-up-1": {
+      "hash": "7904855fceab3d59"
+    },
+    "cue-pull-up-0": {
+      "hash": "423fbc3691c7fc96"
+    },
+    "cue-push-up-0": {
+      "hash": "a9ad3695bef0dcea"
+    },
+    "cue-push-up-1": {
+      "hash": "c6d1f79c32fa9893"
+    },
+    "cue-quad-stretch-0": {
+      "hash": "cc8204a70eecb5ee"
+    },
+    "cue-quad-stretch-1": {
+      "hash": "b03b5d6c00dc40d1"
+    },
+    "cue-reverse-lunge-0": {
+      "hash": "eb75c96eef8ec51a"
+    },
+    "cue-reverse-lunge-1": {
+      "hash": "f161d5057cf9bcd2"
+    },
+    "cue-russian-twist-0": {
+      "hash": "30cf2ab5e8297c86"
+    },
+    "cue-russian-twist-1": {
+      "hash": "2519e8cfebe72287"
+    },
+    "cue-russian-twist-ball-0": {
+      "hash": "30cf2ab5e8297c86"
+    },
+    "cue-russian-twist-ball-1": {
+      "hash": "7b7bbe384e4d00af"
+    },
+    "cue-shoulder-stretch-0": {
+      "hash": "175c393c86b54f11"
+    },
+    "cue-shoulder-stretch-1": {
+      "hash": "0751bcca04e243b9"
+    },
+    "cue-side-plank-0": {
+      "hash": "63b747968ec3de31"
+    },
+    "cue-side-plank-1": {
+      "hash": "f741c38929f1edad"
+    },
+    "cue-skater-jumps-0": {
+      "hash": "ef014f9b31e81af9"
+    },
+    "cue-squat-0": {
+      "hash": "d2c416161073167a"
+    },
+    "cue-skater-jumps-1": {
+      "hash": "97abe667da6a34e2"
+    },
+    "cue-squat-1": {
+      "hash": "487f02a63fd9e2a4"
+    },
+    "cue-squat-2": {
+      "hash": "1ab27438ee7c30fc"
+    },
+    "cue-trunk-rotation-0": {
+      "hash": "c139feeb8d860d26"
+    },
+    "cue-trunk-rotation-1": {
+      "hash": "838f2875f696c326"
+    },
+    "ex-back-squat": {
+      "hash": "92646efc38f8647d"
+    },
+    "ex-arm-circles": {
+      "hash": "c9185ae2f90a4d42"
+    },
+    "ex-bulgarian-split-squat": {
+      "hash": "257e0693ca010566"
+    },
+    "ex-bicycle-crunch": {
+      "hash": "1b3a46d3a2dfd3cd"
+    },
+    "ex-burpee": {
+      "hash": "31580345d1b05002"
+    },
+    "ex-calf-stretch": {
+      "hash": "3b1404039117964e"
+    },
+    "ex-childs-pose": {
+      "hash": "54974abe77f93edd"
+    },
+    "ex-cat-cow": {
+      "hash": "41ed9cab8fb08d8e"
+    },
+    "ex-dead-bug": {
+      "hash": "854e340043f6153c"
+    },
+    "ex-deadlift": {
+      "hash": "7eb47ac80c203c24"
+    },
+    "ex-drill-hook-uppercut": {
+      "hash": "d5bdaa99c54cebf4"
+    },
+    "ex-drill-jab-slow": {
+      "hash": "ee22db748a816b38"
+    },
+    "ex-drill-lowkick": {
+      "hash": "06c90932ee549bae"
+    },
+    "ex-drill-knee": {
+      "hash": "2e22778e6d89bcd4"
+    },
+    "ex-drill-one-two-slow": {
+      "hash": "9f7cc3f8260a8241"
+    },
+    "ex-drill-parry-counter": {
+      "hash": "f4f460ae41665568"
+    },
+    "ex-drill-slip-counter": {
+      "hash": "d849a863b3f5cb46"
+    },
+    "ex-drill-teep": {
+      "hash": "7a07a0a2a6cfe67a"
+    },
+    "ex-dumbbell-press": {
+      "hash": "ff55cbb2f62d42ab"
+    },
+    "ex-dumbbell-row": {
+      "hash": "e6d8c15d73125675"
+    },
+    "ex-glute-bridge": {
+      "hash": "ea21facf9dae2941"
+    },
+    "ex-goblet-squat": {
+      "hash": "7e275d590f8a57f0"
+    },
+    "ex-hanging-knee-raise": {
+      "hash": "c0bc6ab1eca01d68"
+    },
+    "ex-hamstring-stretch": {
+      "hash": "f9a8a8dbff37e987"
+    },
+    "ex-high-knees": {
+      "hash": "17d51f480ce018a8"
+    },
+    "ex-hip-circles": {
+      "hash": "919829f330c1770d"
+    },
+    "ex-hip-flexor-stretch": {
+      "hash": "d66c8e74c9b1aaef"
+    },
+    "ex-hollow-hold": {
+      "hash": "c8c225f3d37b4b3f"
+    },
+    "ex-inchworm": {
+      "hash": "d3498e8b30aaa369"
+    },
+    "ex-jump-rope": {
+      "hash": "f0ee2ce6a8f5c82c"
+    },
+    "ex-jumping-jacks": {
+      "hash": "b389cb4e9e7c3794"
+    },
+    "ex-kettlebell-swing": {
+      "hash": "9803255a8cd38592"
+    },
+    "ex-leg-swings": {
+      "hash": "78e01112f13af8e7"
+    },
+    "ex-medicine-ball-slam": {
+      "hash": "d2a1298e9943f161"
+    },
+    "ex-mountain-climbers": {
+      "hash": "0930d6492dc68459"
+    },
+    "ex-neck-stretch": {
+      "hash": "ecc49bcf52092252"
+    },
+    "ex-plank": {
+      "hash": "0f2ae1e6f218f8d0"
+    },
+    "ex-pull-up": {
+      "hash": "69885b396f6556e1"
+    },
+    "ex-push-up": {
+      "hash": "2dd3295f506cae17"
+    },
+    "ex-quad-stretch": {
+      "hash": "e76ffad7d2c2fbef"
+    },
+    "ex-reverse-lunge": {
+      "hash": "97930062404dff73"
+    },
+    "ex-russian-twist": {
+      "hash": "3402d381544cbe83"
+    },
+    "ex-russian-twist-ball": {
+      "hash": "4999d8165f828adf"
+    },
+    "ex-shoulder-stretch": {
+      "hash": "72405992414c6f2d"
+    },
+    "ex-side-plank": {
+      "hash": "d7de992a597e283b"
+    },
+    "ex-skater-jumps": {
+      "hash": "ed156a5583065e64"
+    },
+    "ex-squat": {
+      "hash": "d8500aad36b18bcc"
+    },
+    "ex-trunk-rotation": {
+      "hash": "7fe05d6853a33c25"
+    },
+    "phrase-finish": {
+      "hash": "7c3633609b492166"
+    },
+    "phrase-freestyle": {
+      "hash": "bd1a37b0bca3278c"
+    },
+    "phrase-next-round": {
+      "hash": "3a76452d3d5f169e"
+    },
+    "phrase-ready": {
+      "hash": "369fec863eac8663"
+    },
+    "tech-angle": {
+      "hash": "a27cbbad643b0b0a"
+    },
+    "tech-back-step": {
+      "hash": "060918098f555bfc"
+    },
+    "tech-body-kick": {
+      "hash": "723050b54d934b04"
+    },
+    "tech-block": {
+      "hash": "0255fc3b18bd37d2"
+    },
+    "tech-check": {
+      "hash": "bc626d780f0c34ba"
+    },
+    "tech-cross": {
+      "hash": "c4b7579352761b90"
+    },
+    "tech-head-kick": {
+      "hash": "569f8aec47d26d3f"
+    },
+    "tech-jab": {
+      "hash": "c926e3838e4be231"
+    },
+    "tech-knee": {
+      "hash": "d4c02679742a735c"
+    },
+    "tech-lead-hook": {
+      "hash": "c0be37ed76783f39"
+    },
+    "tech-lead-uppercut": {
+      "hash": "859b497b28717186"
+    },
+    "tech-overhand": {
+      "hash": "793f171cc32995e3"
+    },
+    "tech-parry": {
+      "hash": "5cd5ee4dd53ece0d"
+    },
+    "tech-pivot": {
+      "hash": "5a07bb69a953a214"
+    },
+    "tech-rear-hook": {
+      "hash": "76fff285b70bf612"
+    },
+    "tech-rear-uppercut": {
+      "hash": "988135c28fdafed0"
+    },
+    "tech-roll": {
+      "hash": "98c01c96b8f24481"
+    },
+    "tech-switch": {
+      "hash": "483eb18c003409b6"
+    },
+    "tech-spinning-back-kick": {
+      "hash": "def780dde019d270"
+    },
+    "tech-switch-kick": {
+      "hash": "697d2c32695dc1b5"
+    },
+    "tech-switch-knee": {
+      "hash": "a4a2d84e2affde65"
+    },
+    "tech-teep": {
+      "hash": "1b1d4985d3b5e71b"
+    },
+    "tech-teep-rear": {
+      "hash": "1d8e4263a34b740d"
+    },
+    "theme-jab-als-tueroeffner": {
+      "hash": "3ea9a66190c0c893"
+    },
+    "theme-kniefinish": {
+      "hash": "501c55077fdb71a4"
+    },
+    "theme-koerper-und-kopf": {
+      "hash": "39b3bc5de789a266"
+    },
+    "theme-lowkick-setzen": {
+      "hash": "d36277bd683350ae"
+    },
+    "theme-teep-und-distanz": {
+      "hash": "7a07a0a2a6cfe67a"
+    },
+    "theme-verteidigen-und-kontern": {
+      "hash": "10421cd4dcff0058"
+    }
+  }
+}
