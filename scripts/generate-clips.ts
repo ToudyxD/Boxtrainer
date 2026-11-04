@@ -111,10 +111,22 @@ async function synthesize(key: string, voice: VoiceConfig, text: string): Promis
   }
 }
 
+const LOCK_ERRORS = new Set(["EPERM", "EBUSY", "EACCES"]);
+
+/** Schreibt über eine temporäre Datei; wiederholt kurz, wenn Windows die Zieldatei gerade sperrt. */
 async function writeAtomic(path: string, data: Buffer | string): Promise<void> {
   const tmp = `${path}.tmp`;
   await writeFile(tmp, data);
-  await rename(tmp, path);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await rename(tmp, path);
+      return;
+    } catch (err) {
+      const code = err instanceof Error && "code" in err ? String(err.code) : "";
+      if (!LOCK_ERRORS.has(code) || attempt >= 8) throw err;
+      await sleep(150 * (attempt + 1));
+    }
+  }
 }
 
 async function main(): Promise<void> {
@@ -164,15 +176,20 @@ async function main(): Promise<void> {
   let done = 0;
   let saving: Promise<void> = Promise.resolve();
 
+  const persistState = (): Promise<void> => {
+    const snapshot = JSON.stringify({ voiceId: voice.voiceId, model: voice.model, clips }, null, 2);
+    const write = saving.then(() => writeAtomic(STATE_FILE, snapshot));
+    saving = write.catch(() => undefined);
+    return write;
+  };
+
   const worker = async (): Promise<void> => {
     for (let item: PlanItem | undefined = queue.shift(); item && !fatal; item = queue.shift()) {
       try {
         const audio = await synthesize(key, voice, item.spoken);
         await writeAtomic(join(AUDIO_DIR, `${item.id}.mp3`), audio);
         clips[item.id] = { hash: item.hash };
-        const snapshot = JSON.stringify({ voiceId: voice.voiceId, model: voice.model, clips }, null, 2);
-        saving = saving.then(() => writeAtomic(STATE_FILE, snapshot));
-        await saving;
+        await persistState();
         if ((audio.length * 8) / (kbps * 1000) > LONG_CLIP_SECONDS) longClips.push(item.id);
         console.log(`[${++done}/${plan.generate.length}] ${item.id}  "${item.spoken}"`);
       } catch (err) {
@@ -186,7 +203,7 @@ async function main(): Promise<void> {
   };
 
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-  await saving;
+  await persistState();
 
   if (longClips.length > 0) console.log(`Auffallend lange Clips (> ${LONG_CLIP_SECONDS} s): ${longClips.join(", ")}`);
   if (fatal) throw fatal;
