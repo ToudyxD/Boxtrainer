@@ -5,12 +5,19 @@ import {
   GeneratorError,
   availableThemes,
   blockSeconds,
+  generateSingleBlock,
   generateTraining,
+  moveBlock,
+  removeBlock,
+  replaceBlock,
+  rerollBlock,
+  setRounds,
   trainingSeconds,
+  type ContentInput,
   type HistoryEntry,
 } from "../domain/generator";
-import type { Level, Style, Training, TrainingType } from "../domain/models";
-import { TRAINING_TEMPLATES } from "../domain/templates";
+import type { Block, BlockType, Level, Style, Training } from "../domain/models";
+import { BLOCK_TEMPLATES, MIN_ROUNDS, TRAINING_TEMPLATES, maxRounds, type TemplateTrainingType } from "../domain/templates";
 import { getSessionService } from "../services/appServices";
 import { useStoredState } from "./useStoredState";
 
@@ -23,6 +30,7 @@ export interface StartRequest {
 }
 
 type Pace = "short" | "normal" | "long";
+type Mode = "full" | "single";
 
 const PACES: Record<Pace, { label: string; scale: number }> = {
   short: { label: "Kurz (dichte Ansagen)", scale: 0.5 },
@@ -31,9 +39,12 @@ const PACES: Record<Pace, { label: string; scale: number }> = {
 };
 
 interface Config {
-  type: TrainingType;
+  mode: Mode;
+  type: TemplateTrainingType;
+  blockType: BlockType;
   equipmentId: string;
   minutes: number;
+  singleMinutes: number;
   style: Style;
   level: Level;
   focus: string;
@@ -41,24 +52,41 @@ interface Config {
 }
 
 const DEFAULT_CONFIG: Config = {
+  mode: "full",
   type: "technique",
+  blockType: "shadow",
   equipmentId: "martial-arts-gym",
   minutes: 75,
+  singleMinutes: 20,
   style: "kickboxing",
   level: 2,
   focus: "",
   pace: "normal",
 };
 
+const FULL_MINUTES = [45, 60, 75, 90];
+const SINGLE_MINUTES = [10, 15, 20, 30];
+const BLOCK_TYPES = Object.keys(BLOCK_TEMPLATES) as BlockType[];
+
 const LEVEL_LABELS: Record<Level, string> = { 1: "Grundlagen", 2: "Aufbau", 3: "Fortgeschritten" };
 const STYLE_LABELS: Record<Style, string> = { boxing: "Boxen", kickboxing: "Kickboxen (K-1)" };
 const fmtMin = (seconds: number): string => `${Math.round(seconds / 60)} min`;
+const newSeed = (): number => Date.now() % 1_000_000;
+
+type Generated = { ok: true; training: Training; seed: number } | { ok: false; error: string };
+
+function asGeneratorError(err: unknown): string {
+  if (err instanceof GeneratorError) return err.message;
+  throw err;
+}
 
 export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void }) {
   const library = useMemo(() => loadLibrary(), []);
   const [config, setConfig] = useStoredState<Config>("boxtrainer.config.v1", DEFAULT_CONFIG);
-  const [seed, setSeed] = useState(() => Date.now() % 1_000_000);
-  const [generated, setGenerated] = useState(false);
+  const [generated, setGenerated] = useState<Generated | null>(null);
+  const [editError, setEditError] = useState("");
+  const [swapping, setSwapping] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
   const [historyError, setHistoryError] = useState("");
 
@@ -73,53 +101,189 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
   }, []);
 
   const themes = availableThemes(library, config.style, config.level);
-  const focus = themes.includes(config.focus) ? config.focus : "";
-  const equipment = DEFAULT_EQUIPMENT_PROFILES.find((p) => p.id === config.equipmentId) ?? DEFAULT_EQUIPMENT_PROFILES[0]!;
+  const focusFor = (cfg: Config): string =>
+    availableThemes(library, cfg.style, cfg.level).includes(cfg.focus) ? cfg.focus : "";
+  const equipmentFor = (cfg: Config) =>
+    DEFAULT_EQUIPMENT_PROFILES.find((p) => p.id === cfg.equipmentId) ?? DEFAULT_EQUIPMENT_PROFILES[0]!;
+  const contentInput = (cfg: Config): ContentInput => ({
+    equipment: equipmentFor(cfg),
+    style: cfg.style,
+    level: cfg.level,
+    history: history ?? [],
+  });
+  const showFocus = config.mode === "full" ? config.type === "technique" : BLOCK_TEMPLATES[config.blockType].usesFocus === true;
 
-  const result = useMemo(() => {
+  const generate = (cfg: Config): void => {
+    const seed = newSeed();
+    const focus = focusFor(cfg);
+    setEditError("");
+    setSwapping(null);
+    setConfirmRemove(null);
     try {
-      const training = generateTraining(
-        {
-          type: config.type,
-          equipment,
-          targetMinutes: config.minutes,
-          style: config.style,
-          level: config.level,
-          seed,
-          history: history ?? [],
-          ...(focus ? { focusTheme: focus } : {}),
-        },
-        library,
-      );
-      return { ok: true, training } as const;
+      const training =
+        cfg.mode === "single"
+          ? generateSingleBlock(
+              {
+                ...contentInput(cfg),
+                blockType: cfg.blockType,
+                targetMinutes: cfg.singleMinutes,
+                seed,
+                ...(focus && BLOCK_TEMPLATES[cfg.blockType].usesFocus ? { focusTheme: focus } : {}),
+              },
+              library,
+            )
+          : generateTraining(
+              { ...contentInput(cfg), type: cfg.type, targetMinutes: cfg.minutes, seed, ...(focus ? { focusTheme: focus } : {}) },
+              library,
+            );
+      setGenerated({ ok: true, training, seed });
     } catch (err) {
-      if (err instanceof GeneratorError) return { ok: false, error: err.message } as const;
-      throw err;
+      setGenerated({ ok: false, error: asGeneratorError(err) });
     }
-  }, [config, equipment, focus, history, library, seed]);
+  };
 
   const update = (patch: Partial<Config>): void => {
-    setConfig({ ...config, ...patch });
-    setSeed(Date.now() % 1_000_000);
+    const next = { ...config, ...patch };
+    setConfig(next);
+    if (generated) generate(next);
+  };
+
+  const edit = (change: (t: Training) => Training): void => {
+    if (!generated?.ok) return;
+    try {
+      setGenerated({ ...generated, training: change(generated.training) });
+      setEditError("");
+    } catch (err) {
+      setEditError(asGeneratorError(err));
+    }
+    setSwapping(null);
+    setConfirmRemove(null);
   };
 
   const exerciseName = (id: string): string => library.exercises.find((e) => e.id === id)?.name ?? id;
+  const training = generated?.ok ? generated.training : null;
+
+  const renderBlock = (b: Block, i: number, blocks: Block[]) => (
+    <li key={b.id}>
+      <div className="block-head">
+        <strong>{BLOCK_LABELS[b.type]}</strong>
+        <span>{fmtMin(blockSeconds(b))}</span>
+      </div>
+      <span>
+        {b.rounds} × {b.roundSeconds >= 60 ? fmtMin(b.roundSeconds) : `${b.roundSeconds} s`}
+        {b.restSeconds > 0 ? `, ${b.restSeconds} s Pause` : ""}
+      </span>
+      {b.exerciseIds.length > 0 && <small>{b.exerciseIds.map(exerciseName).join(", ")}</small>}
+      {b.comboIds.length > 0 && <small>{b.comboIds.length} Kombis im Pool</small>}
+
+      <div className="block-tools">
+        <div className="stepper" role="group" aria-label={`Runden ${BLOCK_LABELS[b.type]}`}>
+          <button className="ghost" aria-label="Eine Runde weniger" disabled={b.rounds <= MIN_ROUNDS} onClick={() => edit((t) => setRounds(t, i, b.rounds - 1))}>
+            −
+          </button>
+          <span>{b.rounds} Runden</span>
+          <button className="ghost" aria-label="Eine Runde mehr" disabled={b.rounds >= maxRounds(b.type)} onClick={() => edit((t) => setRounds(t, i, b.rounds + 1))}>
+            +
+          </button>
+        </div>
+        {blocks.length > 1 && (
+          <div className="stepper">
+            <button className="ghost" disabled={i === 0} onClick={() => edit((t) => moveBlock(t, i, i - 1))}>
+              Hoch
+            </button>
+            <button className="ghost" disabled={i === blocks.length - 1} onClick={() => edit((t) => moveBlock(t, i, i + 1))}>
+              Runter
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="block-tools">
+        <button className="ghost" onClick={() => edit((t) => rerollBlock(t, i, contentInput(config), library, newSeed()))}>
+          Neu würfeln
+        </button>
+        <button className="ghost" aria-expanded={swapping === b.id} onClick={() => setSwapping(swapping === b.id ? null : b.id)}>
+          Tauschen
+        </button>
+        {blocks.length > 1 && (
+          <button className="ghost" onClick={() => setConfirmRemove(confirmRemove === b.id ? null : b.id)}>
+            Entfernen
+          </button>
+        )}
+      </div>
+
+      {swapping === b.id && (
+        <label>
+          Tauschen gegen
+          <select
+            value=""
+            onChange={(e) => {
+              const type = e.target.value as BlockType;
+              edit((t) => replaceBlock(t, i, type, contentInput(config), library, newSeed()));
+            }}
+          >
+            <option value="" disabled>
+              Blocktyp wählen …
+            </option>
+            {BLOCK_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {BLOCK_LABELS[type]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {confirmRemove === b.id && (
+        <div className="block-tools">
+          <button className="danger" onClick={() => edit((t) => removeBlock(t, i))}>
+            Block entfernen
+          </button>
+          <button className="ghost" onClick={() => setConfirmRemove(null)}>
+            Abbrechen
+          </button>
+        </div>
+      )}
+    </li>
+  );
 
   return (
     <main>
       <h1>Training</h1>
 
       <section>
-        <label>
-          Typ
-          <select value={config.type} onChange={(e) => update({ type: e.target.value as TrainingType })}>
-            {Object.values(TRAINING_TEMPLATES).map((t) => (
-              <option key={t.type} value={t.type}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="segmented" role="group" aria-label="Umfang">
+          <button className={config.mode === "full" ? "selected" : "ghost"} aria-pressed={config.mode === "full"} onClick={() => update({ mode: "full" })}>
+            Komplettes Training
+          </button>
+          <button className={config.mode === "single" ? "selected" : "ghost"} aria-pressed={config.mode === "single"} onClick={() => update({ mode: "single" })}>
+            Einzelner Block
+          </button>
+        </div>
+
+        {config.mode === "full" ? (
+          <label>
+            Typ
+            <select value={config.type} onChange={(e) => update({ type: e.target.value as TemplateTrainingType })}>
+              {Object.values(TRAINING_TEMPLATES).map((t) => (
+                <option key={t.type} value={t.type}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label>
+            Block
+            <select value={config.blockType} onChange={(e) => update({ blockType: e.target.value as BlockType })}>
+              {BLOCK_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {BLOCK_LABELS[type]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           Ort
           <select value={config.equipmentId} onChange={(e) => update({ equipmentId: e.target.value })}>
@@ -132,13 +296,23 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
         </label>
         <label>
           Dauer
-          <select value={config.minutes} onChange={(e) => update({ minutes: Number(e.target.value) })}>
-            {[45, 60, 75, 90].map((m) => (
-              <option key={m} value={m}>
-                {m} min
-              </option>
-            ))}
-          </select>
+          {config.mode === "full" ? (
+            <select value={config.minutes} onChange={(e) => update({ minutes: Number(e.target.value) })}>
+              {FULL_MINUTES.map((m) => (
+                <option key={m} value={m}>
+                  {m} min
+                </option>
+              ))}
+            </select>
+          ) : (
+            <select value={config.singleMinutes} onChange={(e) => update({ singleMinutes: Number(e.target.value) })}>
+              {SINGLE_MINUTES.map((m) => (
+                <option key={m} value={m}>
+                  {m} min
+                </option>
+              ))}
+            </select>
+          )}
         </label>
         <label>
           Stil
@@ -152,7 +326,7 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
         </label>
         <label>
           Ansage-Pausen
-          <select value={config.pace} onChange={(e) => update({ pace: e.target.value as Pace })}>
+          <select value={config.pace} onChange={(e) => setConfig({ ...config, pace: e.target.value as Pace })}>
             {Object.entries(PACES).map(([k, v]) => (
               <option key={k} value={k}>
                 {v.label}
@@ -170,10 +344,10 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
             ))}
           </select>
         </label>
-        {config.type === "technique" && (
+        {showFocus && (
           <label>
             Fokus-Thema
-            <select value={focus} onChange={(e) => update({ focus: e.target.value })}>
+            <select value={focusFor(config)} onChange={(e) => update({ focus: e.target.value })}>
               <option value="">Automatisch (am längsten nicht trainiert)</option>
               {themes.map((t) => (
                 <option key={t}>{t}</option>
@@ -181,46 +355,35 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
             </select>
           </label>
         )}
-        <button
-          onClick={() => {
-            setSeed(Date.now() % 1_000_000);
-            setGenerated(true);
-          }}
-        >
-          {generated ? "Neu würfeln" : "Training erstellen"}
+        <button disabled={history === null} onClick={() => generate(config)}>
+          {generated ? "Alles neu würfeln" : config.mode === "single" ? "Block erstellen" : "Training erstellen"}
         </button>
       </section>
 
       {historyError && <p className="warn">Verlauf nicht verfügbar, Abwechslung eingeschränkt: {historyError}</p>}
 
-      {generated && !result.ok && <p className="error">{result.error}</p>}
+      {generated && !generated.ok && <p className="error">{generated.error}</p>}
 
-      {generated && result.ok && (
+      {generated?.ok && training && (
         <section>
           <h2>
-            Vorschau · {fmtMin(trainingSeconds(result.training))}
-            {result.training.focusTheme ? ` · ${result.training.focusTheme}` : ""}
+            Vorschau · {fmtMin(trainingSeconds(training))}
+            {training.focusTheme ? ` · ${training.focusTheme}` : ""}
           </h2>
-          <ol className="blocks">
-            {result.training.blocks.map((b) => (
-              <li key={b.id}>
-                <strong>{BLOCK_LABELS[b.type]}</strong>
-                <span>
-                  {b.rounds} × {b.roundSeconds >= 60 ? fmtMin(b.roundSeconds) : `${b.roundSeconds} s`}
-                  {b.restSeconds > 0 ? `, ${b.restSeconds} s Pause` : ""} · {fmtMin(blockSeconds(b))}
-                </span>
-                {b.exerciseIds.length > 0 && <small>{b.exerciseIds.map(exerciseName).join(", ")}</small>}
-                {b.comboIds.length > 0 && <small>{b.comboIds.length} Kombis im Pool</small>}
-              </li>
-            ))}
-          </ol>
-          <button onClick={() => onStart({
-                training: result.training,
-                seed,
+          {editError && <p className="error">{editError}</p>}
+          <ol className="blocks">{training.blocks.map(renderBlock)}</ol>
+          <button
+            className="big"
+            onClick={() =>
+              onStart({
+                training,
+                seed: generated.seed,
                 style: config.style,
                 level: config.level,
                 pauseScale: PACES[config.pace]?.scale ?? 1,
-              })}>
+              })
+            }
+          >
             Starten
           </button>
         </section>

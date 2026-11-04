@@ -320,3 +320,56 @@ textarea {
 .details .skipped {
   color: var(--muted);
 }
+
+.blocks .block-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.block-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.block-tools > button {
+  flex: 1 1 0;
+  padding: 10px 12px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+}
+
+.stepper button {
+  min-width: 56px;
+  font-size: 1.3rem;
+  padding: 8px 12px;
+}
+
+.stepper > span {
+  min-width: 6.5em;
+  text-align: center;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.blocks label {
+  margin: 8px 0 0;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.segmented button {
+  padding: 10px;
+}

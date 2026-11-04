@@ -28,6 +28,7 @@ const TRAINING_TYPES: Record<TrainingType, true> = {
   stamina: true,
   strength: true,
   "strength-endurance": true,
+  single: true,
 };
 
 type Json = Record<string, unknown>;

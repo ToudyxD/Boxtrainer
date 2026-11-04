@@ -96,7 +96,7 @@ export interface Block {
   focusTheme?: string;
 }
 
-export type TrainingType = "technique" | "stamina" | "strength" | "strength-endurance";
+export type TrainingType = "technique" | "stamina" | "strength" | "strength-endurance" | "single";
 
 export interface Training {
   id: string;

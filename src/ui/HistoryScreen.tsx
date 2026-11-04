@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BLOCK_LABELS } from "../domain/cues";
 import type { Session } from "../domain/models";
-import { TRAINING_TEMPLATES } from "../domain/templates";
+import { trainingLabel } from "../domain/templates";
 import { getSessionService } from "../services/appServices";
 import { saveTextFile } from "./saveFile";
 
@@ -70,7 +70,7 @@ export function HistoryScreen() {
             <li key={s.id}>
               <button className="row-button" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : s.id)}>
                 <span>
-                  <strong>{TRAINING_TEMPLATES[s.training.type].label}</strong>
+                  <strong>{trainingLabel(s.training)}</strong>
                   {s.training.focusTheme ? ` · ${s.training.focusTheme}` : ""}
                 </span>
                 <span>

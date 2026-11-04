@@ -1,5 +1,6 @@
 import type {
   Block,
+  BlockType,
   Combo,
   EquipmentProfile,
   EquipmentTag,
@@ -8,10 +9,9 @@ import type {
   Library,
   Style,
   Training,
-  TrainingType,
 } from "./models";
 import { createRng, type Rng } from "./rng";
-import { TRAINING_TEMPLATES, type BlockTemplate } from "./templates";
+import { BLOCK_TEMPLATES, MIN_ROUNDS, TRAINING_TEMPLATES, maxRounds, type BlockTemplate, type TemplateTrainingType } from "./templates";
 
 export class GeneratorError extends Error {}
 
@@ -22,15 +22,26 @@ export interface HistoryEntry {
   exerciseIds: string[];
 }
 
-export interface GeneratorInput {
-  type: TrainingType;
+/** Was die Inhaltsauswahl braucht: Ort, Stil, Level und Verlauf. */
+export interface ContentInput {
   equipment: EquipmentProfile;
-  targetMinutes: number;
   style: Style;
   level: Level;
+  history: HistoryEntry[];
+}
+
+export interface GeneratorInput extends ContentInput {
+  type: TemplateTrainingType;
+  targetMinutes: number;
   focusTheme?: string;
   seed: number;
-  history: HistoryEntry[];
+}
+
+export interface SingleBlockInput extends ContentInput {
+  blockType: BlockType;
+  targetMinutes: number;
+  focusTheme?: string;
+  seed: number;
 }
 
 const RECENT_WINDOW = 3;
@@ -107,7 +118,12 @@ export function availableThemes(library: Library, style: Style, level: Level): s
   ];
 }
 
-function resolveFocusTheme(input: GeneratorInput, library: Library, rng: Rng): string | undefined {
+function resolveFocusTheme(
+  input: ContentInput & { focusTheme?: string },
+  autoPick: boolean,
+  library: Library,
+  rng: Rng,
+): string | undefined {
   const themes = availableThemes(library, input.style, input.level);
 
   if (input.focusTheme !== undefined) {
@@ -116,7 +132,7 @@ function resolveFocusTheme(input: GeneratorInput, library: Library, rng: Rng): s
     }
     return input.focusTheme;
   }
-  if (input.type !== "technique") return undefined;
+  if (!autoPick) return undefined;
   if (themes.length === 0) throw new GeneratorError("Keine Fokus-Themen verfügbar");
 
   const newestFirst = [...input.history].sort((a, b) => b.date.localeCompare(a.date));
@@ -165,7 +181,7 @@ function scaleRounds(templates: readonly BlockTemplate[], targetSeconds: number)
 }
 
 interface BuildContext {
-  input: GeneratorInput;
+  input: ContentInput;
   library: Library;
   rng: Rng;
   focus: string | undefined;
@@ -222,26 +238,33 @@ function buildBlock(t: BlockTemplate, rounds: number, id: string, ctx: BuildCont
   };
 }
 
-export function generateTraining(input: GeneratorInput, library: Library): Training {
-  if (!Number.isFinite(input.targetMinutes) || input.targetMinutes <= 0) {
-    throw new GeneratorError(`Ungültige Zieldauer: ${input.targetMinutes}`);
-  }
+function validateMinutes(minutes: number): void {
+  if (!Number.isFinite(minutes) || minutes <= 0) throw new GeneratorError(`Ungültige Zieldauer: ${minutes}`);
+}
 
-  const available = new Set(input.equipment.tags);
-  const templates = TRAINING_TEMPLATES[input.type].blocks.map((b) => resolveTemplate(b, available));
-  const rng = createRng(input.seed);
-  const focus = resolveFocusTheme(input, library, rng);
-  const rounds = scaleRounds(templates, input.targetMinutes * 60);
-
-  const ctx: BuildContext = {
+function createContext(input: ContentInput, library: Library, rng: Rng, focus: string | undefined, extraRecent?: Block): BuildContext {
+  return {
     input,
     library,
     rng,
     focus,
-    available,
-    recentCombos: recentIds(input.history, (h) => h.comboIds),
-    recentExercises: recentIds(input.history, (h) => h.exerciseIds),
+    available: new Set(input.equipment.tags),
+    recentCombos: new Set([...recentIds(input.history, (h) => h.comboIds), ...(extraRecent?.comboIds ?? [])]),
+    recentExercises: new Set([...recentIds(input.history, (h) => h.exerciseIds), ...(extraRecent?.exerciseIds ?? [])]),
   };
+}
+
+export function generateTraining(input: GeneratorInput, library: Library): Training {
+  validateMinutes(input.targetMinutes);
+  const template = TRAINING_TEMPLATES[input.type];
+  if (!template) throw new GeneratorError(`Unbekannter Trainingstyp: ${String(input.type)}`);
+
+  const available = new Set(input.equipment.tags);
+  const templates = template.blocks.map((b) => resolveTemplate(b, available));
+  const rng = createRng(input.seed);
+  const focus = resolveFocusTheme(input, input.type === "technique", library, rng);
+  const rounds = scaleRounds(templates, input.targetMinutes * 60);
+  const ctx = createContext(input, library, rng, focus);
 
   const id = `t-${input.seed}`;
   return {
@@ -256,4 +279,109 @@ export function generateTraining(input: GeneratorInput, library: Library): Train
 
 export function trainingSeconds(training: Training): number {
   return training.blocks.reduce((sum, b) => sum + blockSeconds(b), 0);
+}
+
+/** Erzeugt ein Training aus genau einem Block der Vorlage BLOCK_TEMPLATES, skaliert auf die Zieldauer. */
+export function generateSingleBlock(input: SingleBlockInput, library: Library): Training {
+  validateMinutes(input.targetMinutes);
+  const base = BLOCK_TEMPLATES[input.blockType];
+  if (!base) throw new GeneratorError(`Unbekannter Blocktyp: ${String(input.blockType)}`);
+  if (input.focusTheme !== undefined && !base.usesFocus) {
+    throw new GeneratorError(`Block "${base.key}" nutzt kein Fokus-Thema`);
+  }
+
+  const template = resolveTemplate(base, new Set(input.equipment.tags));
+  const rng = createRng(input.seed);
+  const focus = resolveFocusTheme(input, base.usesFocus === true, library, rng);
+  const [rounds] = scaleRounds([template], input.targetMinutes * 60);
+  const ctx = createContext(input, library, rng, focus);
+
+  const id = `t-${input.seed}`;
+  return {
+    id,
+    type: "single",
+    equipmentProfileId: input.equipment.id,
+    targetMinutes: input.targetMinutes,
+    ...(focus ? { focusTheme: focus } : {}),
+    blocks: [buildBlock(template, rounds as number, `${id}-b0`, ctx)],
+  };
+}
+
+function blockAt(training: Training, index: number): Block {
+  const block = Number.isInteger(index) ? training.blocks[index] : undefined;
+  if (!block) throw new GeneratorError(`Block ${index} existiert nicht (Training hat ${training.blocks.length} Blöcke)`);
+  return block;
+}
+
+function checkEquipment(training: Training, input: ContentInput): void {
+  if (input.equipment.id !== training.equipmentProfileId) {
+    throw new GeneratorError(
+      `Equipment-Profil "${input.equipment.id}" passt nicht zum Training ("${training.equipmentProfileId}")`,
+    );
+  }
+}
+
+function withBlock(training: Training, index: number, block: Block): Training {
+  return { ...training, blocks: training.blocks.map((b, i) => (i === index ? block : b)) };
+}
+
+function nextBlockId(training: Training): string {
+  const used = new Set(training.blocks.map((b) => b.id));
+  for (let n = training.blocks.length; ; n++) {
+    const id = `${training.id}-b${n}`;
+    if (!used.has(id)) return id;
+  }
+}
+
+/** Würfelt Kombis und Übungen eines Blocks neu; Zeiten, Runden, ID und alle anderen Blöcke bleiben. */
+export function rerollBlock(training: Training, blockIndex: number, input: ContentInput, library: Library, seed: number): Training {
+  const block = blockAt(training, blockIndex);
+  checkEquipment(training, input);
+
+  const template: BlockTemplate = { ...BLOCK_TEMPLATES[block.type], type: block.type, usesFocus: block.focusTheme !== undefined };
+  const ctx = createContext(input, library, createRng(seed), block.focusTheme, block);
+  const fresh = buildBlock(template, block.rounds, block.id, ctx);
+  return withBlock(training, blockIndex, { ...block, comboIds: fresh.comboIds, exerciseIds: fresh.exerciseIds });
+}
+
+/** Ersetzt einen Block durch einen neu erzeugten Block eines anderen Typs (inkl. Equipment-Ersatzregel). */
+export function replaceBlock(
+  training: Training,
+  blockIndex: number,
+  blockType: BlockType,
+  input: ContentInput,
+  library: Library,
+  seed: number,
+): Training {
+  blockAt(training, blockIndex);
+  checkEquipment(training, input);
+  const base = BLOCK_TEMPLATES[blockType];
+  if (!base) throw new GeneratorError(`Unbekannter Blocktyp: ${String(blockType)}`);
+
+  const ctx = createContext(input, library, createRng(seed), base.usesFocus ? training.focusTheme : undefined);
+  const block = buildBlock(resolveTemplate(base, ctx.available), base.rounds, nextBlockId(training), ctx);
+  return withBlock(training, blockIndex, block);
+}
+
+export function removeBlock(training: Training, blockIndex: number): Training {
+  blockAt(training, blockIndex);
+  if (training.blocks.length <= 1) throw new GeneratorError("Ein Training braucht mindestens einen Block");
+  return { ...training, blocks: training.blocks.filter((_, i) => i !== blockIndex) };
+}
+
+export function setRounds(training: Training, blockIndex: number, rounds: number): Training {
+  const block = blockAt(training, blockIndex);
+  const max = maxRounds(block.type);
+  if (!Number.isInteger(rounds) || rounds < MIN_ROUNDS || rounds > max) {
+    throw new GeneratorError(`Runden müssen eine ganze Zahl von ${MIN_ROUNDS} bis ${max} sein: ${rounds}`);
+  }
+  return withBlock(training, blockIndex, { ...block, rounds });
+}
+
+export function moveBlock(training: Training, from: number, to: number): Training {
+  const block = blockAt(training, from);
+  blockAt(training, to);
+  const blocks = training.blocks.filter((_, i) => i !== from);
+  blocks.splice(to, 0, block);
+  return { ...training, blocks };
 }

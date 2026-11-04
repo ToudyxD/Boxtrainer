@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_EQUIPMENT_PROFILES, loadLibrary } from "../content";
-import { generateTraining } from "./generator";
+import { generateTraining, type GeneratorInput } from "./generator";
 import type { Block, Training } from "./models";
 import {
   ANNOUNCE_BUFFER,
@@ -15,7 +15,7 @@ import {
 const library = loadLibrary();
 const gym = DEFAULT_EQUIPMENT_PROFILES.find((p) => p.id === "martial-arts-gym")!;
 
-const training = (type: Training["type"] = "stamina", seed = 3): Training =>
+const training = (type: GeneratorInput["type"] = "stamina", seed = 3): Training =>
   generateTraining({ type, equipment: gym, targetMinutes: 75, style: "kickboxing", level: 2, seed, history: [] }, library);
 
 const build = (t: Training, seed = 1): Timeline => buildTimeline(t, library, { seed, style: "kickboxing", level: 2 });

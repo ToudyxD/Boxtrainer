@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_EQUIPMENT_PROFILES, loadLibrary } from "../content";
 import { comboAnnouncement } from "./content";
 import { buildClipManifest, clipId, comboSecondsFrom, cueFor, slug, type Cue } from "./cues";
-import { generateTraining } from "./generator";
+import { generateTraining, type GeneratorInput } from "./generator";
 import type { Training } from "./models";
 import { Player, type AudioSink } from "./player";
 import { buildTimeline, estimateComboSeconds, type Timeline } from "./timeline";
@@ -30,7 +30,7 @@ class RecordingSink implements AudioSink {
   }
 }
 
-const make = (type: Training["type"] = "stamina") => {
+const make = (type: GeneratorInput["type"] = "stamina") => {
   const training = generateTraining(
     { type, equipment: gym, targetMinutes: 75, style: "kickboxing", level: 2, seed: 3, history: [] },
     library,

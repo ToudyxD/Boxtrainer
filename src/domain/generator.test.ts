@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_EQUIPMENT_PROFILES, loadLibrary } from "../content";
 import { GeneratorError, generateTraining, trainingSeconds, type GeneratorInput, type HistoryEntry } from "./generator";
-import type { EquipmentProfile, Level, Style, TrainingType } from "./models";
+import type { EquipmentProfile, Level, Style } from "./models";
+import type { TemplateTrainingType } from "./templates";
 
 const library = loadLibrary();
-const TYPES: TrainingType[] = ["technique", "stamina", "strength", "strength-endurance"];
+const TYPES: TemplateTrainingType[] = ["technique", "stamina", "strength", "strength-endurance"];
 const STYLES: Style[] = ["boxing", "kickboxing"];
 const LEVELS: Level[] = [1, 2, 3];
 
