@@ -74,7 +74,7 @@ describe("Player", () => {
     player.start();
     run({ player, sink, clock } as ReturnType<typeof make>, 20);
     const countdown = timeline.events.find((e) => e.kind === "countdown")!;
-    const played = sink.played.find((p) => p.cue.kind === "speech" && p.cue.clips[0] === clipId.phrase("countdown"))!;
+    const played = sink.played.find((p) => p.cue.kind === "countdown")!;
     expect(played.at).toBeCloseTo(t0 + 0.3 + countdown.at, 6);
   });
 
@@ -318,7 +318,7 @@ describe("Cues und Clips", () => {
       const ctx = { library, blocks: new Map(training.blocks.map((b) => [b.id, b])) };
       for (const e of timeline.events) {
         const cue = cueFor(e, ctx);
-        if (cue?.kind !== "speech") continue;
+        if (cue?.kind !== "speech" && cue?.kind !== "countdown") continue;
         for (const clip of cue.clips) expect(ids.has(clip), `${type}: ${clip}`).toBe(true);
       }
     }
@@ -328,7 +328,8 @@ describe("Cues und Clips", () => {
     const manifest = buildClipManifest(library);
     expect(new Set(manifest.map((m) => m.id)).size).toBe(manifest.length);
     for (const t of library.techniques) expect(manifest.some((m) => m.id === clipId.technique(t.id))).toBe(true);
-    expect(manifest.find((m) => m.id === clipId.phrase("countdown"))?.targetSeconds).toBe(10);
+    for (let n = 1; n <= 10; n++) expect(manifest.some((m) => m.id === clipId.count(n))).toBe(true);
+    expect(manifest.find((m) => m.id === clipId.count(10))?.text).toBe("Zehn");
   });
 
   it("slug wandelt Umlaute und Satzzeichen um", () => {

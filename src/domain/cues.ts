@@ -6,13 +6,15 @@ export type Cue =
   | { kind: "gong" }
   | { kind: "beep" }
   | { kind: "clapper" }
-  | { kind: "speech"; clips: string[] };
+  | { kind: "speech"; clips: string[] }
+  | { kind: "countdown"; clips: string[]; intervalSeconds: number };
 
 export interface ClipSpec {
   id: string;
   text: string;
-  targetSeconds?: number;
 }
+
+export const COUNTDOWN_WORDS = ["Eins", "Zwei", "Drei", "Vier", "Fünf", "Sechs", "Sieben", "Acht", "Neun", "Zehn"] as const;
 
 export const BLOCK_LABELS: Record<BlockType, string> = {
   warmup: "Aufwärmen",
@@ -27,13 +29,12 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
 };
 
 export const PHRASES = {
-  countdown: { text: "Zehn. Neun. Acht. Sieben. Sechs. Fünf. Vier. Drei. Zwei. Eins.", targetSeconds: 10 },
   ready: { text: "Bereit" },
   push: { text: "Letzte dreißig, Tempo hoch" },
   freestyle: { text: "Freestyle" },
   "next-round": { text: "Nächste Runde" },
   finish: { text: "Geschafft. Gut gemacht." },
-} as const satisfies Record<string, { text: string; targetSeconds?: number }>;
+} as const satisfies Record<string, { text: string }>;
 
 export type PhraseKey = keyof typeof PHRASES;
 
@@ -51,6 +52,7 @@ export const clipId = {
   technique: (id: string): string => `tech-${id}`,
   phrase: (key: PhraseKey): string => `phrase-${key}`,
   block: (type: BlockType): string => `block-${type}`,
+  count: (n: number): string => `count-${n}`,
   exercise: (id: string): string => `ex-${id}`,
   cue: (exerciseId: string, index: number): string => `cue-${exerciseId}-${index}`,
   theme: (theme: string): string => `theme-${slug(theme)}`,
@@ -67,8 +69,9 @@ export function buildClipManifest(library: Library): ClipSpec[] {
 
   for (const t of library.techniques) add({ id: clipId.technique(t.id), text: t.announce });
   for (const [key, p] of Object.entries(PHRASES) as Array<[PhraseKey, (typeof PHRASES)[PhraseKey]]>) {
-    add({ id: clipId.phrase(key), text: p.text, ...("targetSeconds" in p ? { targetSeconds: p.targetSeconds } : {}) });
+    add({ id: clipId.phrase(key), text: p.text });
   }
+  COUNTDOWN_WORDS.forEach((word, i) => add({ id: clipId.count(i + 1), text: word }));
   for (const [type, label] of Object.entries(BLOCK_LABELS) as Array<[BlockType, string]>) {
     add({ id: clipId.block(type), text: label });
   }
@@ -109,7 +112,11 @@ export function cueFor(event: TimelineEvent, ctx: CueContext): Cue | undefined {
       return speech([clipId.block(block.type), ...(block.focusTheme ? [clipId.theme(block.focusTheme)] : [])]);
     }
     case "countdown":
-      return speech([clipId.phrase("countdown")]);
+      return {
+        kind: "countdown",
+        clips: Array.from({ length: COUNTDOWN_WORDS.length }, (_, i) => clipId.count(COUNTDOWN_WORDS.length - i)),
+        intervalSeconds: 1,
+      };
     case "start-signal":
       return { kind: event.signal };
     case "end-signal":

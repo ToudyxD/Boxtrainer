@@ -119,24 +119,28 @@ export class WebAudioSink implements AudioSink, Clock {
       case "clapper":
         this.track(clapper(ctx, out, at));
         return;
+      case "countdown":
+        cue.clips.forEach((id, i) => this.playClip(ctx, out, id, at + i * cue.intervalSeconds));
+        return;
       case "speech": {
         let t = at;
-        for (const id of cue.clips) {
-          const buffer = this.buffers.get(id);
-          if (!buffer) {
-            this.track(placeholder(ctx, out, t));
-            t += PLACEHOLDER_SECONDS;
-            continue;
-          }
-          const src = ctx.createBufferSource();
-          src.buffer = buffer;
-          src.connect(out);
-          src.start(t);
-          this.track([{ node: src, start: t }]);
-          t += buffer.duration + this.gap;
-        }
+        for (const id of cue.clips) t += this.playClip(ctx, out, id, t);
       }
     }
+  }
+
+  private playClip(ctx: AudioContext, out: AudioNode, id: string, at: number): number {
+    const buffer = this.buffers.get(id);
+    if (!buffer) {
+      this.track(placeholder(ctx, out, at));
+      return PLACEHOLDER_SECONDS;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(out);
+    src.start(at);
+    this.track([{ node: src, start: at }]);
+    return buffer.duration + this.gap;
   }
 
   cancelPending(): void {
