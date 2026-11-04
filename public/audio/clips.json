@@ -622,6 +622,114 @@
     },
     "theme-verteidigen-und-kontern": {
       "hash": "10421cd4dcff0058"
+    },
+    "combo-c-angle-jab-cross-hook": {
+      "hash": "3edde2c61fc1d41f"
+    },
+    "combo-c-back-jab-cross": {
+      "hash": "3750bc2f663954b5"
+    },
+    "combo-c-check-cross-bodykick": {
+      "hash": "baa354bfa9acd99f"
+    },
+    "combo-c-block-jab-cross": {
+      "hash": "4c65754cd2be6527"
+    },
+    "combo-c-check-cross-lowkick": {
+      "hash": "472a3f7af10cf631"
+    },
+    "combo-c-cross-hook-lowkick": {
+      "hash": "cc4df1533012bdd1"
+    },
+    "combo-c-cross-hook-rupper-hook": {
+      "hash": "931aaf50700adfe2"
+    },
+    "combo-c-jab-cross": {
+      "hash": "6f62788f6a572845"
+    },
+    "combo-c-jab-cross-bodykick": {
+      "hash": "5520baf10badfc28"
+    },
+    "combo-c-jab-cross-hook": {
+      "hash": "883751f80559d4e6"
+    },
+    "combo-c-jab-cross-hook-cross": {
+      "hash": "9050888edd24280c"
+    },
+    "combo-c-jab-cross-hook-headkick": {
+      "hash": "41d015cdcb93fc84"
+    },
+    "combo-c-jab-cross-hook-hook": {
+      "hash": "064d240a2ecfab2f"
+    },
+    "combo-c-jab-cross-hook-switchknee": {
+      "hash": "28e7cbe29bd38fb6"
+    },
+    "combo-c-jab-cross-knee": {
+      "hash": "f7b4b7dbced9570e"
+    },
+    "combo-c-jab-cross-lowkick": {
+      "hash": "2475362e99e16d69"
+    },
+    "combo-c-jab-cross-lowkick-headkick": {
+      "hash": "125da89c1d18298c"
+    },
+    "combo-c-jab-cross-spinning": {
+      "hash": "185b4d3932f87b92"
+    },
+    "combo-c-jab-cross-switchkick": {
+      "hash": "834fb87edf3a4e2a"
+    },
+    "combo-c-jab-cross-upper-cross": {
+      "hash": "8d375469f5fb5c82"
+    },
+    "combo-c-jab-frontlowkick-cross": {
+      "hash": "61ae0b4cdf485791"
+    },
+    "combo-c-jab-jab-cross": {
+      "hash": "75bb664c306e515e"
+    },
+    "combo-c-jab-lowkick": {
+      "hash": "a777b4b48308b452"
+    },
+    "combo-c-jab-overhand-hook": {
+      "hash": "00f7e6bbe9e78ba0"
+    },
+    "combo-c-parry-cross-hook": {
+      "hash": "45193fd21b46e06f"
+    },
+    "combo-c-pivot-cross-hook-cross": {
+      "hash": "cbb5fa1343b18fe4"
+    },
+    "combo-c-roll-cross-hook": {
+      "hash": "9c3bc1792d0c899e"
+    },
+    "combo-c-rearteep-cross-lowkick": {
+      "hash": "d466003b3a4d174c"
+    },
+    "combo-c-slip-cross": {
+      "hash": "8c4e45e19161d091"
+    },
+    "combo-c-slip-cross-bodykick": {
+      "hash": "e94ec0aed98d550a"
+    },
+    "combo-c-slip-cross-hook": {
+      "hash": "1f5898db4e2bae07"
+    },
+    "combo-c-slip-cross-hook-cross": {
+      "hash": "267cf393ec6f347d"
+    },
+    "combo-c-slip-cross-hook-rupper-cross": {
+      "hash": "3643d6e2a44cb35e"
+    },
+    "combo-c-teep-cross-lowkick": {
+      "hash": "19e7e6ab4da7bfd5"
+    },
+    "combo-c-teep-jab-cross": {
+      "hash": "8ac170a67717a714"
+    },
+    "combo-c-teep-knee": {
+      "hash": "931b8ee82ee87056"
     }
   }
 }
