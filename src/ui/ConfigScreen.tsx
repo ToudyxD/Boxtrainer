@@ -1,9 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_EQUIPMENT_PROFILES, loadLibrary } from "../content";
 import { BLOCK_LABELS } from "../domain/cues";
-import { GeneratorError, availableThemes, blockSeconds, generateTraining, trainingSeconds } from "../domain/generator";
+import {
+  GeneratorError,
+  availableThemes,
+  blockSeconds,
+  generateTraining,
+  trainingSeconds,
+  type HistoryEntry,
+} from "../domain/generator";
 import type { Level, Style, Training, TrainingType } from "../domain/models";
 import { TRAINING_TEMPLATES } from "../domain/templates";
+import { getSessionService } from "../services/appServices";
 import { useStoredState } from "./useStoredState";
 
 export interface StartRequest {
@@ -40,6 +48,18 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
   const [config, setConfig] = useStoredState<Config>("boxtrainer.config.v1", DEFAULT_CONFIG);
   const [seed, setSeed] = useState(() => Date.now() % 1_000_000);
   const [generated, setGenerated] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[] | null>(null);
+  const [historyError, setHistoryError] = useState("");
+
+  useEffect(() => {
+    getSessionService()
+      .history()
+      .then(setHistory)
+      .catch((err: unknown) => {
+        setHistory([]);
+        setHistoryError(err instanceof Error ? err.message : String(err));
+      });
+  }, []);
 
   const themes = availableThemes(library, config.style, config.level);
   const focus = themes.includes(config.focus) ? config.focus : "";
@@ -55,7 +75,7 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
           style: config.style,
           level: config.level,
           seed,
-          history: [],
+          history: history ?? [],
           ...(focus ? { focusTheme: focus } : {}),
         },
         library,
@@ -65,7 +85,7 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
       if (err instanceof GeneratorError) return { ok: false, error: err.message } as const;
       throw err;
     }
-  }, [config, equipment, focus, library, seed]);
+  }, [config, equipment, focus, history, library, seed]);
 
   const update = (patch: Partial<Config>): void => {
     setConfig({ ...config, ...patch });
@@ -149,6 +169,8 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
           {generated ? "Neu würfeln" : "Training erstellen"}
         </button>
       </section>
+
+      {historyError && <p className="warn">Verlauf nicht verfügbar, Abwechslung eingeschränkt: {historyError}</p>}
 
       {generated && !result.ok && <p className="error">{result.error}</p>}
 

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { loadLibrary } from "../content";
 import type { PlayerSnapshot } from "../domain/player";
 import { PlayerSession, type BeginResult } from "../services/playerSession";
+import { getSessionService } from "../services/appServices";
 import type { StartRequest } from "./ConfigScreen";
+import { SessionLogForm } from "./SessionLogForm";
 
 const fmt = (seconds: number): string => {
   const s = Math.ceil(seconds);
@@ -82,14 +84,29 @@ export function PlayerScreen({ request, onExit }: { request: StartRequest; onExi
   if (!snap || !session) return <main className="player center" />;
 
   if (snap.status === "finished" || snap.status === "aborted") {
+    const result = session.result();
+    const finished = snap.status === "finished";
+    if (result.completedBlockIds.length === 0) {
+      return (
+        <main className="player center">
+          <h1>Abgebrochen</h1>
+          <p>Kein Block abgeschlossen, nichts zu speichern.</p>
+          <button className="huge" onClick={onExit}>
+            Fertig
+          </button>
+        </main>
+      );
+    }
     return (
-      <main className="player center">
-        <h1>{snap.status === "finished" ? "Geschafft" : "Abgebrochen"}</h1>
-        <p>{fmt(snap.position)} Trainingszeit</p>
-        <button className="huge" onClick={onExit}>
-          Fertig
-        </button>
-      </main>
+      <SessionLogForm
+        title={finished ? "Geschafft" : "Abgebrochen"}
+        summary={`${fmt(result.actualSeconds)} Gesamtzeit, ${result.completedBlockIds.length} von ${request.training.blocks.length} Blöcken abgeschlossen.`}
+        onSave={async (rpe, note) => {
+          await getSessionService().record({ training: request.training, ...result, rpe, note });
+          onExit();
+        }}
+        onDiscard={onExit}
+      />
     );
   }
 

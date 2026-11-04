@@ -20,12 +20,19 @@ export interface BeginResult extends PreloadResult {
   wakeLockError?: string;
 }
 
+export interface SessionResult {
+  completedBlockIds: string[];
+  actualSeconds: number;
+}
+
 export class PlayerSession {
   private readonly sink = new WebAudioSink({ clipBaseUrl: `${import.meta.env.BASE_URL}audio/` });
   private readonly wake = new WakeLockService();
   private readonly listeners = new Set<(s: PlayerSnapshot) => void>();
   private player: Player | undefined;
   private ticker: number | undefined;
+  private startedAt = 0;
+  private endedAt: number | undefined;
   private readonly onVisible = (): void => {
     if (document.visibilityState === "visible" && this.sink.state !== "locked") void this.sink.resume().catch(() => undefined);
   };
@@ -59,6 +66,7 @@ export class PlayerSession {
     this.player = new Player(timeline, { clock: this.sink, sink: this.sink, training, library });
     document.addEventListener("visibilitychange", this.onVisible);
     this.player.start();
+    this.startedAt = Date.now();
     this.ticker = window.setInterval(() => this.step(), TICK_MS);
     this.emit();
     return { ...preload, ...(wakeLockError ? { wakeLockError } : {}) };
@@ -71,6 +79,13 @@ export class PlayerSession {
 
   snapshot(): PlayerSnapshot | undefined {
     return this.player?.snapshot();
+  }
+
+  /** Bilanz der Einheit: absolvierte Blöcke und tatsächliche Dauer (Wanduhr, inklusive Pausen). */
+  result(): SessionResult {
+    const player = this.requirePlayer();
+    const end = this.endedAt ?? Date.now();
+    return { completedBlockIds: player.completedBlockIds(), actualSeconds: Math.max(0, (end - this.startedAt) / 1000) };
   }
 
   pause(): void {
@@ -95,6 +110,7 @@ export class PlayerSession {
 
   async abort(): Promise<void> {
     this.player?.abort();
+    this.endedAt ??= Date.now();
     await this.dispose();
     this.emit();
   }
@@ -110,7 +126,10 @@ export class PlayerSession {
     const player = this.requirePlayer();
     player.tick();
     this.emit();
-    if (player.status === "finished") void this.dispose();
+    if (player.status === "finished") {
+      this.endedAt ??= Date.now();
+      void this.dispose();
+    }
   }
 
   private emit(): void {

@@ -249,6 +249,34 @@ describe("Player", () => {
     });
   });
 
+  describe("completedBlockIds", () => {
+    it("liefert zu Beginn keinen und nach dem Ende alle Blöcke", () => {
+      const env = make();
+      env.player.start();
+      expect(env.player.completedBlockIds()).toEqual([]);
+      run(env, env.timeline.totalSeconds + 5);
+      expect(env.player.completedBlockIds()).toEqual(env.training.blocks.map((b) => b.id));
+    });
+
+    it("zählt nur Blöcke, deren letzte Runde vorbei ist", () => {
+      const env = make();
+      env.player.start();
+      const second = env.timeline.segments.find((s) => s.blockIndex === 1 && s.kind === "work" && s.roundIndex === 0)!;
+      run(env, second.start + 5);
+      expect(env.player.completedBlockIds()).toEqual([env.training.blocks[0]!.id]);
+    });
+
+    it("bleibt nach Abbruch auf dem erreichten Stand", () => {
+      const env = make();
+      env.player.start();
+      const second = env.timeline.segments.find((s) => s.blockIndex === 1 && s.kind === "work" && s.roundIndex === 0)!;
+      run(env, second.start + 5);
+      env.player.abort();
+      run(env, 100);
+      expect(env.player.completedBlockIds()).toEqual([env.training.blocks[0]!.id]);
+    });
+  });
+
   describe("snapshot", () => {
     it("zeigt Block, Runde und Restzeit", () => {
       const env = make();

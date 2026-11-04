@@ -137,6 +137,17 @@ export class Player {
     if (this.state === "running") this.tick();
   }
 
+  /** Blöcke, deren letzte Arbeitsrunde bereits vollständig durchlaufen wurde. */
+  completedBlockIds(): string[] {
+    const pos = this.position();
+    return this.training.blocks
+      .filter((_, i) => {
+        const ends = this.segments.filter((s) => s.kind === "work" && s.blockIndex === i).map((s) => s.end);
+        return ends.length > 0 && Math.max(...ends) <= pos + 1e-9;
+      })
+      .map((b) => b.id);
+  }
+
   abort(): void {
     if (this.state === "finished" || this.state === "aborted") return;
     this.sink.cancelPending();
