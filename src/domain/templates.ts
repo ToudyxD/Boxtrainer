@@ -10,7 +10,7 @@ export interface BlockTemplate {
   announceDensity: 1 | 2 | 3;
   scale?: { min: number; max: number; step?: number };
   requires?: EquipmentTag[];
-  fallback?: { type: BlockType; requires: EquipmentTag[]; announceMode: AnnounceMode };
+  fallback?: { type: BlockType; requires: EquipmentTag[]; announceMode: AnnounceMode; announceDensity?: 1 | 2 | 3 };
   usesFocus?: boolean;
   exercises?: {
     categories: ExerciseCategory[];
@@ -79,7 +79,7 @@ const bag = (
   scale,
   usesFocus,
   requires: ["heavy-bag"],
-  fallback: { type: "shadow", requires: [], announceMode: "combos" },
+  fallback: { type: "shadow", requires: [], announceMode: "combos", announceDensity: 3 },
 });
 
 export const TRAINING_TEMPLATES: Record<TrainingType, TrainingTemplate> = {
@@ -88,7 +88,7 @@ export const TRAINING_TEMPLATES: Record<TrainingType, TrainingTemplate> = {
     label: "Technik",
     blocks: [
       warmup,
-      shadow("shadow", 3, 2, { min: 2, max: 4 }, true),
+      shadow("shadow", 3, 3, { min: 2, max: 4 }, true),
       {
         key: "drill",
         type: "drill",
@@ -120,7 +120,7 @@ export const TRAINING_TEMPLATES: Record<TrainingType, TrainingTemplate> = {
     label: "Stamina",
     blocks: [
       warmup,
-      shadow("shadow", 2, 2, { min: 1, max: 3 }),
+      shadow("shadow", 2, 3, { min: 1, max: 3 }),
       bag("bag", 8, 180, 45, 3, { min: 4, max: 10 }),
       {
         key: "conditioning",
@@ -141,7 +141,7 @@ export const TRAINING_TEMPLATES: Record<TrainingType, TrainingTemplate> = {
     label: "Kraft",
     blocks: [
       warmup,
-      shadow("shadow", 2, 1, { min: 1, max: 3 }),
+      shadow("shadow", 2, 3, { min: 1, max: 3 }),
       {
         key: "strength",
         type: "strength",

@@ -75,6 +75,7 @@ describe("generateTraining", () => {
     expect(training.blocks.filter((b) => b.type === "shadow")).toHaveLength(2);
     const converted = training.blocks.filter((b) => b.type === "shadow").every((b) => b.comboIds.length >= 4);
     expect(converted).toBe(true);
+    for (const b of training.blocks.filter((x) => x.type === "shadow")) expect(b.announceDensity).toBe(3);
   });
 
   it("behält Sackarbeit mit Sandsack", () => {

@@ -195,6 +195,34 @@ describe("buildTimeline", () => {
     });
   });
 
+  describe("Schattenboxen", () => {
+    const realistic = (c: { techniqueIds: string[] }) => 0.35 * c.techniqueIds.length + 0.2;
+
+    it.each(["technique", "stamina", "strength"] as const)("%s: im Mittel höchstens 4,5 s zwischen Ansagen", (type) => {
+      const gaps: number[] = [];
+      for (let seed = 1; seed <= 10; seed++) {
+        const t = training(type, seed);
+        const tl = buildTimeline(t, library, { seed, style: "kickboxing", level: 2, comboSeconds: realistic });
+        const shadow = t.blocks.find((b) => b.type === "shadow")!;
+        const list = tl.events.filter((e) => (e.kind === "combo" || e.kind === "defense") && e.blockId === shadow.id);
+        for (let i = 1; i < list.length; i++) {
+          if (list[i]!.kind !== "finish" && list[i - 1]!.kind !== "finish") {
+            const a = list[i - 1] as Extract<TimelineEvent, { roundIndex: number }>;
+            const b = list[i] as Extract<TimelineEvent, { roundIndex: number }>;
+            if (a.roundIndex === b.roundIndex) gaps.push(b.at - a.at);
+          }
+        }
+      }
+      expect(gaps.reduce((x, y) => x + y, 0) / gaps.length).toBeLessThan(4.5);
+    });
+
+    it("Schattenblöcke laufen mit der höchsten Ansagedichte", () => {
+      for (const type of ["technique", "stamina", "strength"] as const) {
+        for (const b of training(type).blocks.filter((x) => x.type === "shadow")) expect(b.announceDensity).toBe(3);
+      }
+    });
+  });
+
   describe("Pausen", () => {
     const t = training("stamina");
     const bagBlock = t.blocks.find((b) => b.type === "bag")!;
