@@ -1,0 +1,5 @@
+[
+  { "id": "home", "name": "Zuhause", "tags": ["mat", "jump-rope"] },
+  { "id": "martial-arts-gym", "name": "Kampfsportgym", "tags": ["heavy-bag", "jump-rope", "mirror", "mat", "medicine-ball"] },
+  { "id": "fitness-gym", "name": "Fitnessstudio", "tags": ["dumbbells", "kettlebell", "barbell", "pull-up-bar", "mat", "mirror", "medicine-ball"] }
+]

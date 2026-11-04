@@ -1,4 +1,4 @@
-import type { Combo, Technique } from "./models";
+import type { Combo, Exercise, Technique } from "./models";
 
 export class ContentError extends Error {}
 
@@ -69,4 +69,14 @@ export function comboAnnouncement(combo: Combo, techniques: readonly Technique[]
   }
   flush();
   return parts.join(", ");
+}
+
+export function validateExercises(exercises: readonly Exercise[]): void {
+  const ids = new Set<string>();
+  for (const e of exercises) {
+    if (ids.has(e.id)) throw new ContentError(`Doppelte Übungs-ID: ${e.id}`);
+    ids.add(e.id);
+    if (e.cues.length < 2 || e.cues.length > 3) throw new ContentError(`Übung ${e.id}: 2 bis 3 Cues erwartet`);
+    if (e.styles.length === 0) throw new ContentError(`Übung ${e.id} ohne Stil`);
+  }
 }

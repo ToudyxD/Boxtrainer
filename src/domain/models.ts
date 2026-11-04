@@ -60,6 +60,14 @@ export interface Exercise {
   intensity: 1 | 2 | 3;
   description: string;
   cues: string[];
+  themes?: string[];
+  phases?: Array<"warmup" | "cooldown">;
+}
+
+export interface Library {
+  techniques: Technique[];
+  combos: Combo[];
+  exercises: Exercise[];
 }
 
 export type BlockType =
