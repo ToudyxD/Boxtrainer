@@ -87,10 +87,15 @@ export function validateExercises(exercises: readonly Exercise[]): void {
     if (f.kind === "time" || f.kind === "per-side") {
       if (!(f.seconds > 0)) throw new ContentError(`Übung ${e.id}: Dauer muss größer 0 sein`);
     }
+    if (f.kind === "reps") {
+      if (!Number.isInteger(f.reps) || f.reps < 2 || f.reps > 99) throw new ContentError(`Übung ${e.id}: Wiederholungen müssen 2 bis 99 sein`);
+      if (!Number.isInteger(f.sets) || f.sets < 1) throw new ContentError(`Übung ${e.id}: mindestens ein Satz nötig`);
+      if (f.seconds !== undefined && !(f.seconds > 0)) throw new ContentError(`Übung ${e.id}: Dauer muss größer 0 sein`);
+    }
     if (f.kind === "series" && (f.seconds.length === 0 || f.seconds.some((s) => !(s > 0)))) {
       throw new ContentError(`Übung ${e.id}: Serie braucht Rundenlängen größer 0`);
     }
-    if ((f.kind === "time" || f.kind === "series") && f.restSeconds !== undefined && !(f.restSeconds >= 0)) {
+    if ((f.kind === "time" || f.kind === "series" || f.kind === "reps") && f.restSeconds !== undefined && !(f.restSeconds >= 0)) {
       throw new ContentError(`Übung ${e.id}: Pause darf nicht negativ sein`);
     }
     if (e.bodyAreas.includes("full-body") && e.bodyAreas.length > 1) {

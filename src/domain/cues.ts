@@ -1,4 +1,5 @@
 import { comboAnnouncement } from "./content";
+import { germanNumber } from "./numberWords";
 import type { Block, BlockType, Combo, Library } from "./models";
 import { estimateComboSeconds, type TimelineEvent } from "./timeline";
 
@@ -54,6 +55,7 @@ export const clipId = {
   phrase: (key: PhraseKey): string => `phrase-${key}`,
   block: (type: BlockType): string => `block-${type}`,
   count: (n: number): string => `count-${n}`,
+  reps: (n: number, unit: string): string => `reps-${n}-${slug(unit)}`,
   combo: (id: string): string => `combo-${id}`,
   exercise: (id: string): string => `ex-${id}`,
   cue: (exerciseId: string, index: number): string => `cue-${exerciseId}-${index}`,
@@ -80,6 +82,9 @@ export function buildClipManifest(library: Library): ClipSpec[] {
   }
   for (const e of library.exercises) {
     add({ id: clipId.exercise(e.id), text: e.name });
+    if (e.format.kind === "reps" && e.format.unit) {
+      add({ id: clipId.reps(e.format.reps, e.format.unit), text: repsText(e.format.reps, e.format.unit, true) });
+    }
     e.cues.forEach((cue, i) => add({ id: clipId.cue(e.id, i), text: cue }));
   }
   for (const theme of new Set([
@@ -96,10 +101,18 @@ export interface CueContext {
   blocks: ReadonlyMap<string, Block>;
 }
 
+/** "Dreißig Schläge" für die Ansage, "30 Schläge" für die Anzeige. */
+export function repsText(reps: number, unit: string, spoken: boolean): string {
+  if (!spoken) return `${reps} ${unit}`;
+  const word = germanNumber(reps);
+  return `${word.charAt(0).toUpperCase()}${word.slice(1)} ${unit}`;
+}
+
 function exerciseClips(event: { exerciseId?: string; cue?: string }, ctx: CueContext): string[] {
   if (event.exerciseId === undefined) return [];
   const clips = [clipId.exercise(event.exerciseId)];
   const exercise = ctx.library.exercises.find((e) => e.id === event.exerciseId);
+  if (exercise?.format.kind === "reps" && exercise.format.unit) clips.push(clipId.reps(exercise.format.reps, exercise.format.unit));
   const index = event.cue === undefined ? -1 : (exercise?.cues.indexOf(event.cue) ?? -1);
   if (index >= 0) clips.push(clipId.cue(event.exerciseId, index));
   return clips;
@@ -158,8 +171,10 @@ export function cueFor(event: TimelineEvent, ctx: CueContext): Cue | undefined {
 export function textFor(event: TimelineEvent, ctx: CueContext): string | undefined {
   const exerciseText = (e: { exerciseId?: string; cue?: string }): string | undefined => {
     if (e.exerciseId === undefined) return undefined;
-    const name = ctx.library.exercises.find((x) => x.id === e.exerciseId)?.name ?? e.exerciseId;
-    return e.cue ? `${name} – ${e.cue}` : name;
+    const exercise = ctx.library.exercises.find((x) => x.id === e.exerciseId);
+    const name = exercise?.name ?? e.exerciseId;
+    const count = exercise?.format.kind === "reps" && exercise.format.unit ? `, ${repsText(exercise.format.reps, exercise.format.unit, false)}` : "";
+    return e.cue ? `${name}${count} – ${e.cue}` : `${name}${count}`;
   };
 
   switch (event.kind) {

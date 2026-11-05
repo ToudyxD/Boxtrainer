@@ -16,7 +16,7 @@ import {
   type ContentInput,
   type HistoryEntry,
 } from "../domain/generator";
-import type { Block, BlockType, Level, Style, Training } from "../domain/models";
+import type { Block, BlockType, Level, Library, Style, Training } from "../domain/models";
 import {
   BLOCK_TEMPLATES,
   MIN_ROUNDS,
@@ -88,8 +88,10 @@ function asGeneratorError(err: unknown): string {
 }
 
 /** Übungen eines Blocks; bei eigener Rundenlänge mit Sekunden, aufeinanderfolgende Serien zusammengefasst. */
-function describeExercises(b: Block, name: (id: string) => string): string {
+function describeExercises(b: Block, library: Library): string {
   const seconds = b.exerciseSeconds;
+  const find = (id: string) => library.exercises.find((e) => e.id === id);
+  const name = (id: string): string => find(id)?.name ?? id;
   if (!seconds) return b.exerciseIds.map(name).join(", ");
   const groups: Array<{ id: string; seconds: number[] }> = [];
   b.exerciseIds.forEach((id, n) => {
@@ -97,7 +99,15 @@ function describeExercises(b: Block, name: (id: string) => string): string {
     if (last && last.id === id) last.seconds.push(seconds[n] as number);
     else groups.push({ id, seconds: [seconds[n] as number] });
   });
-  return groups.map((g) => `${name(g.id)} (${g.seconds.join("/")} s)`).join(", ");
+  return groups
+    .map((g) => {
+      const f = find(g.id)?.format;
+      if (f?.kind === "reps" && f.unit) {
+        return `${name(g.id)} (${f.reps} ${f.unit}${g.seconds.length > 1 ? `, ${g.seconds.length} Sätze` : ""})`;
+      }
+      return `${name(g.id)} (${g.seconds.join("/")} s)`;
+    })
+    .join(", ");
 }
 
 function restLabel(b: Block): string {
@@ -200,7 +210,6 @@ export function ConfigScreen({ onStart, onOpenSettings }: { onStart: (req: Start
     setConfirmRemove(null);
   };
 
-  const exerciseName = (id: string): string => library.exercises.find((e) => e.id === id)?.name ?? id;
   const training = generated?.ok ? generated.training : null;
 
   const renderBlock = (b: Block, i: number, blocks: Block[]) => {
@@ -222,7 +231,7 @@ export function ConfigScreen({ onStart, onOpenSettings }: { onStart: (req: Start
         </div>
         {b.exerciseIds.length > 0 && (
           <span className="block-detail">
-            {describeExercises(b, exerciseName)}
+            {describeExercises(b, library)}
           </span>
         )}
         {b.comboIds.length > 0 && <span className="block-detail">{b.comboIds.length} Kombis im Pool</span>}

@@ -67,10 +67,21 @@ export type BodyGroup = "legs" | "upper" | "arms" | "core" | "full";
 /** Ein Hauptbereich oder ein Unterbereich. */
 export type BodyTarget = BodyGroup | BodyArea;
 
+export type RepUnit = "Schläge" | "Tritte" | "Knie";
+
 export type ExerciseFormat =
   | { kind: "time"; seconds: number; restSeconds?: number }
   | { kind: "series"; seconds: number[]; restSeconds?: number }
-  | { kind: "reps"; reps: number; sets: number }
+  | {
+      kind: "reps";
+      reps: number;
+      sets: number;
+      /** Geschätzte Dauer eines Satzes; der Satz endet mit "Fertig" oder nach dieser Zeit. */
+      seconds?: number;
+      restSeconds?: number;
+      /** Wird angesagt und angezeigt, z. B. "30 Schläge". */
+      unit?: RepUnit;
+    }
   | { kind: "per-side"; seconds: number };
 
 export interface Exercise {

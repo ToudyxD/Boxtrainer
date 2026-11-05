@@ -255,7 +255,11 @@ function roundEntries(id: string, library: Library): RoundEntry[] {
   if (f.kind === "time") return [{ id, seconds: f.seconds, rest: f.restSeconds }];
   if (f.kind === "series") return f.seconds.map((seconds) => ({ id, seconds, rest: f.restSeconds }));
   if (f.kind === "per-side") return [{ id, seconds: f.seconds * 2, rest: undefined }];
-  throw new GeneratorError(`Übung ${id}: eigene Rundenlänge braucht ein Zeit-, Seiten- oder Serienformat`);
+  if (f.kind === "reps" && f.seconds !== undefined) {
+    const seconds = f.seconds;
+    return Array.from({ length: f.sets }, () => ({ id, seconds, rest: f.restSeconds }));
+  }
+  throw new GeneratorError(`Übung ${id}: eigene Rundenlänge braucht ein Zeit-, Seiten-, Serien- oder Wiederholungsformat mit Dauer`);
 }
 
 /** Zweiter Durchgang für Blöcke mit Rundenlänge je Übung: nach der Auswahl stehen die echten Längen fest. */

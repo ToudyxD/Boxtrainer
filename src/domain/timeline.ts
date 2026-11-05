@@ -118,11 +118,14 @@ function workEvents(block: Block, roundIndex: number, start: number, bag: ComboB
   events.push({ ...base, kind: "start-signal", at: start, signal: combat ? "gong" : "beep" });
 
   const reserved: Array<[number, number]> = [];
-  if (DRIVEN.has(block.type) && L >= 90) {
+  // Zählrunden enden mit "Fertig", nicht nach Zeit: kein Antreiben und kein Klapper.
+  const roundExercise = block.exerciseIds.length > 0 ? ctx.exercises.get(block.exerciseIds[roundIndex % block.exerciseIds.length] as string) : undefined;
+  const counted = roundExercise?.format.kind === "reps" && roundExercise.format.unit !== undefined;
+  if (DRIVEN.has(block.type) && L >= 90 && !counted) {
     events.push({ ...base, kind: "push", at: at(L - PUSH_BEFORE_END) });
     reserved.push([L - PUSH_BEFORE_END, L - PUSH_BEFORE_END + PUSH_SECONDS]);
   }
-  if (DRIVEN.has(block.type) && L >= 30) {
+  if (DRIVEN.has(block.type) && L >= 30 && !counted) {
     events.push({ ...base, kind: "clapper", at: at(L - CLAPPER_BEFORE_END) });
     reserved.push([L - CLAPPER_BEFORE_END - 0.5, L - CLAPPER_BEFORE_END + CLAPPER_SECONDS]);
   }

@@ -40,8 +40,27 @@ const allowedSeconds = (id: string): number[] => {
   const f = byId.get(id)!.format;
   if (f.kind === "time") return [f.seconds];
   if (f.kind === "series") return f.seconds;
+  if (f.kind === "reps" && f.seconds !== undefined) return [f.seconds];
   throw new Error(`${id}: kein Zeitformat`);
 };
+
+const restOf = (id: string): number | undefined => {
+  const f = byId.get(id)!.format;
+  return f.kind === "time" || f.kind === "series" || f.kind === "reps" ? f.restSeconds : undefined;
+};
+
+/** Bibliothek, in der keine Übung eine eigene Pause hat. */
+const withoutRests = (lib: typeof library): typeof library => ({
+  ...lib,
+  exercises: lib.exercises.map((e) => {
+    const f = e.format;
+    if (f.kind === "time" || f.kind === "series" || f.kind === "reps") {
+      const { restSeconds: _rest, ...rest } = f;
+      return { ...e, format: rest as typeof f };
+    }
+    return e;
+  }),
+});
 
 describe("blockTime", () => {
   it("nutzt ohne Liste die feste Rundenlänge", () => {
@@ -65,17 +84,18 @@ describe("Power-Übungen", () => {
 
   it("enthält die genannten Übungen mit ihrer Dauer", () => {
     const secs = (id: string) => byId.get(id)?.format;
-    expect(secs("power-hooks")).toEqual({ kind: "time", seconds: 60 });
-    expect(secs("dempsey-roll")).toEqual({ kind: "time", seconds: 30 });
+    expect(secs("power-hooks")).toMatchObject({ kind: "reps", reps: 30, unit: "Schläge" });
+    expect(secs("dempsey-roll")).toMatchObject({ kind: "time", seconds: 30 });
     for (const name of ["Power Hooks", "Dempsey Roll", "Raffal Hook", "Backhand Power Punch", "Double Hook", "Non Stop Punch"]) {
       expect(power.map((e) => e.name), name).toContain(name);
     }
   });
 
-  it("brauchen den Sandsack und ein Zeit- oder Serienformat", () => {
+  it("brauchen den Sandsack und ein Format mit Dauer", () => {
     for (const e of power) {
       expect(e.equipment, e.id).toEqual(["heavy-bag"]);
-      expect(["time", "series"], e.id).toContain(e.format.kind);
+      expect(["time", "series", "reps"], e.id).toContain(e.format.kind);
+      expect(allowedSeconds(e.id).length, e.id).toBeGreaterThan(0);
       expect(e.intensity, e.id).toBe(3);
     }
   });
@@ -227,11 +247,12 @@ describe("Power in der Zeitleiste", () => {
     }
   });
 
-  it("legt den Klapper 10 Sekunden vor das Rundenende, auch bei 30-s-Runden", () => {
-    const short = rounds.filter((s) => s.end - s.start === 30);
-    expect(short.length).toBeGreaterThan(0);
+  it("legt den Klapper 10 Sekunden vor das Ende zeitbasierter Runden, nicht vor Zählrunden", () => {
     for (const seg of rounds) {
-      expect(tl.events.some((e) => e.kind === "clapper" && e.blockId === block.id && e.at === seg.end - 10)).toBe(true);
+      const f = byId.get(seg.exerciseId!)!.format;
+      const counted = f.kind === "reps";
+      const clapper = tl.events.some((e) => e.kind === "clapper" && e.blockId === block.id && e.at === seg.end - 10);
+      expect(clapper, `${seg.exerciseId} (${seg.end - seg.start} s)`).toBe(!counted);
     }
   });
 
@@ -292,24 +313,35 @@ describe("Pause je Übung und Serien", () => {
     const block = powerOf(only("tempo-burst", "one-two-sprint"));
     expect(block.exerciseIds.sort()).toEqual(["one-two-sprint", "tempo-burst"]);
     expect(block.exerciseSeconds).toEqual([20, 20]);
-    expect(block.exerciseRest).toEqual([15, 15]);
+    expect(block.exerciseRest).toEqual([30, 30]);
   });
 
-  it("füllt bei gemischten Übungen die Blockpause auf", () => {
-    const block = powerOf(only("tempo-burst", "power-hooks"));
+  it("Pausen je Übung sind 30 oder 60 Sekunden, bei Zählübungen gilt die Pause der Übung", () => {
+    for (const e of library.exercises.filter((x) => x.category === "power")) {
+      expect([30, 60], e.id).toContain(restOf(e.id));
+    }
+  });
+
+  it("füllt bei Übungen ohne eigene Pause die Blockpause auf", () => {
+    const lib = withoutRests(only("tempo-burst", "power-hooks"));
+    const patched = {
+      ...lib,
+      exercises: lib.exercises.map((e) => (e.id === "tempo-burst" ? { ...e, format: { ...e.format, restSeconds: 15 } as typeof e.format } : e)),
+    };
+    const block = powerOf(patched);
     expect(block.exerciseRest).toHaveLength(block.exerciseIds.length);
     block.exerciseIds.forEach((id, i) => expect(block.exerciseRest![i]).toBe(id === "tempo-burst" ? 15 : block.restSeconds));
   });
 
   it("lässt exerciseRest weg, wenn keine Übung eine eigene Pause hat", () => {
-    expect(powerOf(only("power-hooks", "dempsey-roll")).exerciseRest).toBeUndefined();
+    expect(powerOf(withoutRests(only("power-hooks", "dempsey-roll"))).exerciseRest).toBeUndefined();
   });
 
   it("Pyramide ergibt fünf aufeinanderfolgende Runden", () => {
     const block = powerOf(only("power-pyramid"));
     expect(block.exerciseIds).toEqual(Array(5).fill("power-pyramid"));
     expect(block.exerciseSeconds).toEqual([30, 45, 60, 45, 30]);
-    expect(block.exerciseRest).toEqual([20, 20, 20, 20, 20]);
+    expect(block.exerciseRest).toEqual([30, 30, 30, 30, 30]);
   });
 
   it("zählt Zeit und Pausen in der Dauer richtig", () => {
@@ -338,7 +370,7 @@ describe("Pause je Übung und Serien", () => {
     const i = t.blocks.findIndex((b) => b.type === "power");
     const rerolled = rerollBlock(t, i, content(), only("tempo-burst", "power-hooks"), 5);
     expect(rerolled.blocks[i]?.exerciseRest).toHaveLength(rerolled.blocks[i]!.exerciseIds.length);
-    const plain = rerollBlock(t, i, content(), only("power-hooks", "dempsey-roll"), 5);
+    const plain = rerollBlock(t, i, content(), withoutRests(only("power-hooks", "dempsey-roll")), 5);
     expect(plain.blocks[i]?.exerciseRest).toBeUndefined();
   });
 });
