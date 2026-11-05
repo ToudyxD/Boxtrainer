@@ -241,11 +241,20 @@ function pickExercises(t: BlockTemplate, ctx: BuildContext): string[] {
   return picked.map((e) => e.id);
 }
 
-function exerciseSecondsOf(id: string, library: Library): number {
+interface RoundEntry {
+  id: string;
+  seconds: number;
+  rest: number | undefined;
+}
+
+/** Eine Übung mit eigener Länge ergibt eine Runde, eine Serie mehrere aufeinanderfolgende Runden. */
+function roundEntries(id: string, library: Library): RoundEntry[] {
   const exercise = library.exercises.find((e) => e.id === id);
   if (!exercise) throw new GeneratorError(`Unbekannte Übung ${id}`);
-  if (exercise.format.kind !== "time") throw new GeneratorError(`Übung ${id}: eigene Rundenlänge braucht ein Zeitformat`);
-  return exercise.format.seconds;
+  const f = exercise.format;
+  if (f.kind === "time") return [{ id, seconds: f.seconds, rest: f.restSeconds }];
+  if (f.kind === "series") return f.seconds.map((seconds) => ({ id, seconds, rest: f.restSeconds }));
+  throw new GeneratorError(`Übung ${id}: eigene Rundenlänge braucht ein Zeit- oder Serienformat`);
 }
 
 /** Zweiter Durchgang für Blöcke mit Rundenlänge je Übung: nach der Auswahl stehen die echten Längen fest. */
@@ -258,7 +267,9 @@ function refineRounds(blocks: Block[], templates: readonly BlockTemplate[], targ
 
 function buildBlock(t: BlockTemplate, rounds: number, id: string, ctx: BuildContext): Block {
   const isCombat = t.type === "shadow" || t.type === "bag";
-  const exerciseIds = pickExercises(t, ctx);
+  const picked = pickExercises(t, ctx);
+  const entries = t.exercises?.ownSeconds ? picked.flatMap((id) => roundEntries(id, ctx.library)) : undefined;
+  const exerciseIds = entries ? entries.map((e) => e.id) : picked;
   return {
     id,
     type: t.type,
@@ -269,7 +280,8 @@ function buildBlock(t: BlockTemplate, rounds: number, id: string, ctx: BuildCont
     announceDensity: t.announceDensity,
     comboIds: isCombat ? pickCombos(t, rounds, ctx) : [],
     exerciseIds,
-    ...(t.exercises?.ownSeconds ? { exerciseSeconds: exerciseIds.map((e) => exerciseSecondsOf(e, ctx.library)) } : {}),
+    ...(entries ? { exerciseSeconds: entries.map((e) => e.seconds) } : {}),
+    ...(entries?.some((e) => e.rest !== undefined) ? { exerciseRest: entries.map((e) => e.rest ?? t.restSeconds) } : {}),
     ...(t.usesFocus && ctx.focus ? { focusTheme: ctx.focus } : {}),
   };
 }
@@ -381,12 +393,13 @@ export function rerollBlock(training: Training, blockIndex: number, input: Conte
   const template: BlockTemplate = { ...BLOCK_TEMPLATES[block.type], type: block.type, usesFocus: block.focusTheme !== undefined };
   const ctx = createContext(input, library, createRng(seed), block.focusTheme, block);
   const fresh = buildBlock(template, block.rounds, block.id, ctx);
-  const { exerciseSeconds: _old, ...kept } = block;
+  const { exerciseSeconds: _seconds, exerciseRest: _rest, ...kept } = block;
   return withBlock(training, blockIndex, {
     ...kept,
     comboIds: fresh.comboIds,
     exerciseIds: fresh.exerciseIds,
     ...(fresh.exerciseSeconds ? { exerciseSeconds: fresh.exerciseSeconds } : {}),
+    ...(fresh.exerciseRest ? { exerciseRest: fresh.exerciseRest } : {}),
   });
 }
 

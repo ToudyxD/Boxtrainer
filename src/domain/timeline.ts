@@ -1,5 +1,5 @@
 import type { Block, BlockType, Combo, Exercise, Level, Library, Style, Training } from "./models";
-import { roundSecondsAt } from "./blockTime";
+import { restSecondsAt, roundSecondsAt } from "./blockTime";
 import { createRng, type Rng } from "./rng";
 
 export const COUNTDOWN_SECONDS = 10;
@@ -217,16 +217,17 @@ export function buildTimeline(training: Training, library: Library, options: Tim
       events.push(...workEvents(block, r, t, bag, ctx));
       t += roundLength;
 
-      if (r === block.rounds - 1 || block.restSeconds <= 0) continue;
+      const rest = restSecondsAt(block, r);
+      if (r === block.rounds - 1 || rest <= 0) continue;
 
-      segments.push({ kind: "rest", blockId: block.id, blockIndex, roundIndex: r, start: t, end: t + block.restSeconds });
+      segments.push({ kind: "rest", blockId: block.id, blockIndex, roundIndex: r, start: t, end: t + rest });
       const restBase = { blockId: block.id, roundIndex: r + 1 };
-      if (block.restSeconds >= 10) {
+      if (rest >= 10) {
         const next = exerciseFor(block, r + 1, ctx);
         events.push({ ...restBase, kind: "next-up", at: t + 1, ...next });
       }
-      if (block.restSeconds >= 25) events.push({ ...restBase, kind: "ready", at: t + block.restSeconds - COUNTDOWN_SECONDS });
-      t += block.restSeconds;
+      if (rest >= 25) events.push({ ...restBase, kind: "ready", at: t + rest - COUNTDOWN_SECONDS });
+      t += rest;
     }
   });
 

@@ -65,7 +65,8 @@ export type BodyArea =
 export type BodyGroup = "legs" | "upper" | "arms" | "core" | "full";
 
 export type ExerciseFormat =
-  | { kind: "time"; seconds: number }
+  | { kind: "time"; seconds: number; restSeconds?: number }
+  | { kind: "series"; seconds: number[]; restSeconds?: number }
   | { kind: "reps"; reps: number; sets: number }
   | { kind: "per-side"; seconds: number };
 
@@ -117,6 +118,8 @@ export interface Block {
   exerciseIds: string[];
   /** Rundenlänge je Übung (parallel zu exerciseIds), falls die Übungen ihre Dauer mitbringen. */
   exerciseSeconds?: number[];
+  /** Pause nach der Runde je Übung (parallel zu exerciseIds); ohne Angabe gilt restSeconds. */
+  exerciseRest?: number[];
   focusTheme?: string;
 }
 

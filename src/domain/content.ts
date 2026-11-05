@@ -83,6 +83,16 @@ export function validateExercises(exercises: readonly Exercise[]): void {
     const unknown = e.bodyAreas.find((a) => !(a in BODY_AREA_GROUP));
     if (unknown !== undefined) throw new ContentError(`Übung ${e.id}: unbekannter Körperbereich "${unknown}"`);
     if (new Set(e.bodyAreas).size !== e.bodyAreas.length) throw new ContentError(`Übung ${e.id}: doppelter Körperbereich`);
+    const f = e.format;
+    if (f.kind === "time" || f.kind === "per-side") {
+      if (!(f.seconds > 0)) throw new ContentError(`Übung ${e.id}: Dauer muss größer 0 sein`);
+    }
+    if (f.kind === "series" && (f.seconds.length === 0 || f.seconds.some((s) => !(s > 0)))) {
+      throw new ContentError(`Übung ${e.id}: Serie braucht Rundenlängen größer 0`);
+    }
+    if ((f.kind === "time" || f.kind === "series") && f.restSeconds !== undefined && !(f.restSeconds >= 0)) {
+      throw new ContentError(`Übung ${e.id}: Pause darf nicht negativ sein`);
+    }
     if (e.bodyAreas.includes("full-body") && e.bodyAreas.length > 1) {
       throw new ContentError(`Übung ${e.id}: "full-body" nicht mit anderen Bereichen kombinieren`);
     }

@@ -87,6 +87,27 @@ function asGeneratorError(err: unknown): string {
   throw err;
 }
 
+/** Übungen eines Blocks; bei eigener Rundenlänge mit Sekunden, aufeinanderfolgende Serien zusammengefasst. */
+function describeExercises(b: Block, name: (id: string) => string): string {
+  const seconds = b.exerciseSeconds;
+  if (!seconds) return b.exerciseIds.map(name).join(", ");
+  const groups: Array<{ id: string; seconds: number[] }> = [];
+  b.exerciseIds.forEach((id, n) => {
+    const last = groups.at(-1);
+    if (last && last.id === id) last.seconds.push(seconds[n] as number);
+    else groups.push({ id, seconds: [seconds[n] as number] });
+  });
+  return groups.map((g) => `${name(g.id)} (${g.seconds.join("/")} s)`).join(", ");
+}
+
+function restLabel(b: Block): string {
+  const rests = b.exerciseRest ?? [b.restSeconds];
+  const min = Math.min(...rests);
+  const max = Math.max(...rests);
+  if (max <= 0) return "";
+  return min === max ? `, ${max} s Pause` : `, ${min}–${max} s Pause`;
+}
+
 export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void }) {
   const library = useMemo(() => loadLibrary(), []);
   const [config, setConfig] = useStoredState<Config>("boxtrainer.config.v1", DEFAULT_CONFIG);
@@ -182,7 +203,7 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
           <span className="block-name">{BLOCK_LABELS[b.type]}</span>
           <span className="block-meta">
             {ownLengths ? `${b.rounds} Runden` : `${b.rounds} × ${roundLength}`}
-            {b.restSeconds > 0 ? `, ${b.restSeconds} s Pause` : ""}
+            {restLabel(b)}
           </span>
           <span className="dur">
             {Math.round(blockSeconds(b) / 60)}
@@ -191,7 +212,7 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
         </div>
         {b.exerciseIds.length > 0 && (
           <span className="block-detail">
-            {b.exerciseIds.map((id, n) => (b.exerciseSeconds ? `${exerciseName(id)} (${b.exerciseSeconds[n]} s)` : exerciseName(id))).join(", ")}
+            {describeExercises(b, exerciseName)}
           </span>
         )}
         {b.comboIds.length > 0 && <span className="block-detail">{b.comboIds.length} Kombis im Pool</span>}

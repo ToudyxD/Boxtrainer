@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_EQUIPMENT_PROFILES, loadLibrary } from "../content";
 import { BackupError, parseBackup } from "./backup";
-import { blockSeconds, roundSecondsAt } from "./blockTime";
+import { ContentError, validateExercises } from "./content";
+import { blockSeconds, restSecondsAt, roundSecondsAt } from "./blockTime";
 import { BLOCK_LABELS, buildClipManifest } from "./cues";
 import {
   generateSingleBlock,
@@ -13,7 +14,7 @@ import {
   type ContentInput,
   type GeneratorInput,
 } from "./generator";
-import type { EquipmentProfile, Level, Style, Training } from "./models";
+import type { EquipmentProfile, Exercise, Level, Style, Training } from "./models";
 import { buildTimeline } from "./timeline";
 
 const library = loadLibrary();
@@ -34,6 +35,13 @@ const training = (over: Partial<GeneratorInput> = {}): Training =>
   generateTraining({ ...content(), type: "power", targetMinutes: 75, seed: 1, ...over }, library);
 
 const powerBlock = (t: Training) => t.blocks.find((b) => b.type === "power")!;
+
+const allowedSeconds = (id: string): number[] => {
+  const f = byId.get(id)!.format;
+  if (f.kind === "time") return [f.seconds];
+  if (f.kind === "series") return f.seconds;
+  throw new Error(`${id}: kein Zeitformat`);
+};
 
 describe("blockTime", () => {
   it("nutzt ohne Liste die feste Rundenlänge", () => {
@@ -64,10 +72,10 @@ describe("Power-Übungen", () => {
     }
   });
 
-  it("brauchen den Sandsack und ein Zeitformat", () => {
+  it("brauchen den Sandsack und ein Zeit- oder Serienformat", () => {
     for (const e of power) {
       expect(e.equipment, e.id).toEqual(["heavy-bag"]);
-      expect(e.format.kind, e.id).toBe("time");
+      expect(["time", "series"], e.id).toContain(e.format.kind);
       expect(e.intensity, e.id).toBe(3);
     }
   });
@@ -92,8 +100,7 @@ describe("Power-Block im Training", () => {
     const block = powerBlock(training());
     expect(block.exerciseSeconds).toHaveLength(block.exerciseIds.length);
     block.exerciseIds.forEach((id, i) => {
-      const format = byId.get(id)!.format;
-      expect(format.kind === "time" && block.exerciseSeconds![i] === format.seconds, id).toBe(true);
+      expect(allowedSeconds(id), id).toContain(block.exerciseSeconds![i]);
       expect(byId.get(id)?.category).toBe("power");
     });
   });
@@ -164,10 +171,8 @@ describe("Bearbeiten von Power-Blöcken", () => {
       expect(block.exerciseSeconds).toHaveLength(block.exerciseIds.length);
       expect(block.rounds).toBe(t.blocks[i]!.rounds);
       expect(block.id).toBe(t.blocks[i]!.id);
-      block.exerciseIds.forEach((id, n) => {
-        const format = byId.get(id)!.format;
-        expect(format.kind === "time" && block.exerciseSeconds![n] === format.seconds).toBe(true);
-      });
+      if (block.exerciseRest) expect(block.exerciseRest).toHaveLength(block.exerciseIds.length);
+      block.exerciseIds.forEach((id, n) => expect(allowedSeconds(id)).toContain(block.exerciseSeconds![n]));
       if (block.exerciseIds.join() !== t.blocks[i]!.exerciseIds.join()) changed = true;
     }
     expect(changed).toBe(true);
@@ -188,7 +193,7 @@ describe("Bearbeiten von Power-Blöcken", () => {
     const i = t.blocks.findIndex((b) => b.type === "power");
     const block = t.blocks[i]!;
     const shorter = setRounds(t, i, block.rounds - 1);
-    const lost = roundSecondsAt(block, block.rounds - 1) + block.restSeconds;
+    const lost = roundSecondsAt(block, block.rounds - 1) + restSecondsAt(block, block.rounds - 2);
     expect(trainingSeconds(t) - trainingSeconds(shorter)).toBe(lost);
   });
 });
@@ -210,7 +215,7 @@ describe("Power in der Zeitleiste", () => {
   it("setzt Pausen zwischen die Runden", () => {
     const rests = tl.segments.filter((s) => s.kind === "rest" && s.blockId === block.id);
     expect(rests).toHaveLength(block.rounds - 1);
-    for (const r of rests) expect(r.end - r.start).toBe(block.restSeconds);
+    rests.forEach((r) => expect(r.end - r.start).toBe(restSecondsAt(block, r.roundIndex)));
   });
 
   it("gongt Start und Ende und sagt zu Rundenbeginn die Übung an", () => {
@@ -236,6 +241,126 @@ describe("Power in der Zeitleiste", () => {
   });
 });
 
+const only = (...ids: string[]) => ({
+  ...library,
+  exercises: library.exercises.filter((e) => e.category !== "power" || ids.includes(e.id)),
+});
+
+const powerOf = (lib: typeof library, over: Partial<GeneratorInput> = {}) =>
+  powerBlock(generateTraining({ ...content(), type: "power", targetMinutes: 75, seed: 2, ...over }, lib));
+
+describe("Neue Power-Übungen", () => {
+  const power = library.exercises.filter((e) => e.category === "power");
+  const names = new Set(power.map((e) => e.name));
+
+  it("enthält die Schläge, Tritte und Tempo-Übungen aus der Übersicht", () => {
+    for (const name of [
+      "Lead Hook Power", "Rear Hook Power", "Overhand", "Körperhaken", "Lead Uppercut Power", "Cross Haken Power",
+      "Slip and Rip", "Triple Hook", "Peek-a-boo Hooks", "Power Teep", "Rear Lowkick", "Lead Lowkick", "Body Kick",
+      "Cross Lowkick", "Hook Lowkick", "Clinch Knees", "Switch Kick", "Head Kick Power", "Tempo-Salve",
+      "Eins-zwei-Sprint", "Power Pyramide",
+    ]) {
+      expect(names, name).toContain(name);
+    }
+  });
+
+  it("Tritte und Knie gibt es nur für Kickboxen", () => {
+    for (const id of ["power-teep", "rear-lowkick", "lead-lowkick", "body-kick", "cross-lowkick", "hook-lowkick", "clinch-knees", "switch-kick", "head-kick-power"]) {
+      expect(byId.get(id)?.styles, id).toEqual(["kickboxing"]);
+    }
+  });
+
+  it("Boxen bekommt keine Tritte", () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const block = powerOf(library, { ...content("martial-arts-gym", "boxing", 3), seed });
+      for (const id of block.exerciseIds) expect(byId.get(id)?.styles, id).toContain("boxing");
+    }
+  });
+
+  it("jedes Level hat in beiden Stilen mindestens 5 Power-Übungen", () => {
+    for (const style of STYLES) {
+      for (const level of LEVELS) {
+        const n = power.filter((e) => e.styles.includes(style) && e.level <= level).length;
+        expect(n, `${style} Level ${level}`).toBeGreaterThanOrEqual(5);
+      }
+    }
+  });
+});
+
+describe("Pause je Übung und Serien", () => {
+  it("Tempo-Übungen bringen ihre kürzere Pause mit", () => {
+    const block = powerOf(only("tempo-burst", "one-two-sprint"));
+    expect(block.exerciseIds.sort()).toEqual(["one-two-sprint", "tempo-burst"]);
+    expect(block.exerciseSeconds).toEqual([20, 20]);
+    expect(block.exerciseRest).toEqual([15, 15]);
+  });
+
+  it("füllt bei gemischten Übungen die Blockpause auf", () => {
+    const block = powerOf(only("tempo-burst", "power-hooks"));
+    expect(block.exerciseRest).toHaveLength(block.exerciseIds.length);
+    block.exerciseIds.forEach((id, i) => expect(block.exerciseRest![i]).toBe(id === "tempo-burst" ? 15 : block.restSeconds));
+  });
+
+  it("lässt exerciseRest weg, wenn keine Übung eine eigene Pause hat", () => {
+    expect(powerOf(only("power-hooks", "dempsey-roll")).exerciseRest).toBeUndefined();
+  });
+
+  it("Pyramide ergibt fünf aufeinanderfolgende Runden", () => {
+    const block = powerOf(only("power-pyramid"));
+    expect(block.exerciseIds).toEqual(Array(5).fill("power-pyramid"));
+    expect(block.exerciseSeconds).toEqual([30, 45, 60, 45, 30]);
+    expect(block.exerciseRest).toEqual([20, 20, 20, 20, 20]);
+  });
+
+  it("zählt Zeit und Pausen in der Dauer richtig", () => {
+    const block = { rounds: 5, roundSeconds: 45, restSeconds: 30, exerciseSeconds: [30, 45, 60, 45, 30], exerciseRest: [20, 20, 20, 20, 20] };
+    expect(blockSeconds(block)).toBe(210 + 4 * 20);
+    expect(restSecondsAt(block, 2)).toBe(20);
+    expect(restSecondsAt({ restSeconds: 30 }, 4)).toBe(30);
+  });
+
+  it("Zeitleiste nutzt die Pausen je Runde und lässt den Countdown bei kurzen Pausen weg", () => {
+    const t = generateTraining({ ...content(), type: "power", targetMinutes: 75, seed: 2 }, only("tempo-burst", "power-hooks"));
+    const block = powerBlock(t);
+    const tl = buildTimeline(t, only("tempo-burst", "power-hooks"), { seed: 1, style: "kickboxing", level: 2 });
+    const rests = tl.segments.filter((s) => s.kind === "rest" && s.blockId === block.id);
+    expect(rests).toHaveLength(block.rounds - 1);
+    for (const r of rests) {
+      const len = restSecondsAt(block, r.roundIndex);
+      expect(r.end - r.start).toBe(len);
+      const ready = tl.events.some((e) => e.kind === "ready" && e.blockId === block.id && e.at === r.end - 10);
+      expect(ready, `Pause ${r.roundIndex} (${len} s)`).toBe(len >= 25);
+    }
+  });
+
+  it("Neu würfeln übernimmt neue Pausen und entfernt sie bei Blöcken ohne", () => {
+    const t = generateTraining({ ...content(), type: "power", targetMinutes: 75, seed: 2 }, only("tempo-burst", "power-hooks"));
+    const i = t.blocks.findIndex((b) => b.type === "power");
+    const rerolled = rerollBlock(t, i, content(), only("tempo-burst", "power-hooks"), 5);
+    expect(rerolled.blocks[i]?.exerciseRest).toHaveLength(rerolled.blocks[i]!.exerciseIds.length);
+    const plain = rerollBlock(t, i, content(), only("power-hooks", "dempsey-roll"), 5);
+    expect(plain.blocks[i]?.exerciseRest).toBeUndefined();
+  });
+});
+
+describe("Validierung von Zeit- und Serienformaten", () => {
+  const sample = (format: Exercise["format"]): Exercise => ({ ...library.exercises.find((e) => e.id === "power-hooks")!, format });
+
+  it("akzeptiert die Bibliothek", () => {
+    expect(() => validateExercises(library.exercises)).not.toThrow();
+  });
+
+  it.each([
+    ["Dauer 0", { kind: "time", seconds: 0 }],
+    ["negative Pause", { kind: "time", seconds: 30, restSeconds: -1 }],
+    ["leere Serie", { kind: "series", seconds: [] }],
+    ["Serie mit 0", { kind: "series", seconds: [30, 0] }],
+    ["Serie mit negativer Pause", { kind: "series", seconds: [30], restSeconds: -5 }],
+  ] as Array<[string, Exercise["format"]]>)("lehnt ab: %s", (_name, format) => {
+    expect(() => validateExercises([sample(format)])).toThrow(ContentError);
+  });
+});
+
 describe("Backup mit Power", () => {
   const session = (t: Training, blockPatch: Record<string, unknown> = {}) => ({
     id: "s1",
@@ -251,6 +376,20 @@ describe("Backup mit Power", () => {
   it("übersteht einen Round-Trip", () => {
     const t = training();
     expect(parseBackup(file(session(t))).sessions[0]?.training).toEqual(t);
+  });
+
+  it.each([
+    ["Pause: Länge passt nicht", [30]],
+    ["Pause: negativ", [-1, 30, 30, 30, 30, 30]],
+  ])("lehnt exerciseRest ab: %s", (_name, value) => {
+    expect(() => parseBackup(file(session(training(), { exerciseRest: value })))).toThrow(BackupError);
+  });
+
+  it("akzeptiert exerciseRest passend zu den Übungen", () => {
+    const t = training();
+    const block = powerBlock(t);
+    const rest = block.exerciseIds.map(() => 15);
+    expect(parseBackup(file(session(t, { exerciseRest: rest }))).sessions).toHaveLength(1);
   });
 
   it.each([

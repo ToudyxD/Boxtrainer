@@ -80,6 +80,13 @@ function validateBlock(raw: unknown, path: string): string {
     }
     if (seconds.length !== exerciseIds.length) fail(`${path}.exerciseSeconds`, "muss genauso lang sein wie exerciseIds");
   }
+  const rests = raw["exerciseRest"];
+  if (rests !== undefined) {
+    if (!Array.isArray(rests) || rests.some((s) => typeof s !== "number" || !Number.isFinite(s) || s < 0)) {
+      fail(`${path}.exerciseRest`, "Liste von Zahlen >= 0 erwartet");
+    }
+    if (rests.length !== exerciseIds.length) fail(`${path}.exerciseRest`, "muss genauso lang sein wie exerciseIds");
+  }
   return id;
 }
 
