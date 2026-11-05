@@ -5,7 +5,7 @@ import type { EquipmentProfile, Level, Style } from "./models";
 import type { TemplateTrainingType } from "./templates";
 
 const library = loadLibrary();
-const TYPES: TemplateTrainingType[] = ["technique", "stamina", "strength", "strength-endurance"];
+const TYPES: TemplateTrainingType[] = ["technique", "stamina", "power", "strength", "strength-endurance"];
 const STYLES: Style[] = ["boxing", "kickboxing"];
 const LEVELS: Level[] = [1, 2, 3];
 

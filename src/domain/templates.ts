@@ -13,7 +13,16 @@ export interface BlockTemplate {
   announceDensity: 1 | 2 | 3;
   scale?: { min: number; max: number; step?: number };
   requires?: EquipmentTag[];
-  fallback?: { type: BlockType; requires: EquipmentTag[]; announceMode: AnnounceMode; announceDensity?: 1 | 2 | 3 };
+  fallback?: {
+    type: BlockType;
+    requires: EquipmentTag[];
+    announceMode: AnnounceMode;
+    announceDensity?: 1 | 2 | 3;
+    rounds?: number;
+    roundSeconds?: number;
+    restSeconds?: number;
+    scale?: { min: number; max: number; step?: number };
+  };
   usesFocus?: boolean;
   exercises?: {
     categories: ExerciseCategory[];
@@ -22,6 +31,8 @@ export interface BlockTemplate {
     phase?: "warmup" | "cooldown";
     /** Körperbereiche, die die Auswahl möglichst alle abdecken soll. */
     cover?: BodyGroup[];
+    /** Jede Übung bringt ihre Rundenlänge aus ihrem Zeitformat mit. */
+    ownSeconds?: boolean;
   };
 }
 
@@ -87,6 +98,29 @@ const bag = (
   fallback: { type: "shadow", requires: [], announceMode: "combos", announceDensity: 3 },
 });
 
+const power: BlockTemplate = {
+  key: "power",
+  type: "power",
+  rounds: 12,
+  roundSeconds: 45,
+  restSeconds: 30,
+  announceMode: "cues-only",
+  announceDensity: 1,
+  scale: { min: 4, max: 20 },
+  requires: ["heavy-bag"],
+  fallback: {
+    type: "shadow",
+    requires: [],
+    announceMode: "combos",
+    announceDensity: 3,
+    rounds: 3,
+    roundSeconds: 180,
+    restSeconds: 60,
+    scale: { min: 2, max: 8 },
+  },
+  exercises: { categories: ["power"], count: 6, ownSeconds: true },
+};
+
 export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> = {
   technique: {
     type: "technique",
@@ -107,6 +141,27 @@ export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> 
         exercises: { categories: ["drill"], count: 3 },
       },
       bag("bag", 5, 180, 60, 2, { min: 3, max: 6 }, true),
+      {
+        key: "core",
+        type: "core",
+        rounds: 8,
+        roundSeconds: 45,
+        restSeconds: 15,
+        announceMode: "cues-only",
+        announceDensity: 1,
+        exercises: { categories: ["core"], count: 4 },
+      },
+      cooldown(7),
+    ],
+  },
+  power: {
+    type: "power",
+    label: "Power",
+    blocks: [
+      warmup,
+      shadow("shadow", 2, 3, { min: 1, max: 3 }),
+      power,
+      bag("bag", 4, 180, 60, 2, { min: 2, max: 8 }),
       {
         key: "core",
         type: "core",
@@ -197,6 +252,7 @@ export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> 
 export const BLOCK_TEMPLATES: Record<BlockType, BlockTemplate> = {
   shadow: shadow("shadow", 3, 3, { min: 1, max: 20 }, true),
   bag: bag("bag", 5, 180, 60, 2, { min: 1, max: 20 }, true),
+  power,
   drill: {
     key: "drill",
     type: "drill",
@@ -268,6 +324,7 @@ export function maxRounds(type: BlockType): number {
 export const TRAINING_TYPE_LABELS: Record<TrainingType, string> = {
   technique: TRAINING_TEMPLATES.technique.label,
   stamina: TRAINING_TEMPLATES.stamina.label,
+  power: TRAINING_TEMPLATES.power.label,
   strength: TRAINING_TEMPLATES.strength.label,
   "strength-endurance": TRAINING_TEMPLATES["strength-endurance"].label,
   single: "Einzelblock",

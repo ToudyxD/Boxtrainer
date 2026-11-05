@@ -174,13 +174,14 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
 
   const renderBlock = (b: Block, i: number, blocks: Block[]) => {
     const open = expanded === b.id;
+    const ownLengths = b.exerciseSeconds !== undefined;
     const roundLength = b.roundSeconds >= 60 ? `${Math.round(b.roundSeconds / 60)} min` : `${b.roundSeconds} s`;
     return (
       <li key={b.id} className={`block ${blockCategory(b.type)}`}>
         <div className="block-head">
           <span className="block-name">{BLOCK_LABELS[b.type]}</span>
           <span className="block-meta">
-            {b.rounds} × {roundLength}
+            {ownLengths ? `${b.rounds} Runden` : `${b.rounds} × ${roundLength}`}
             {b.restSeconds > 0 ? `, ${b.restSeconds} s Pause` : ""}
           </span>
           <span className="dur">
@@ -188,7 +189,11 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
             <small>min</small>
           </span>
         </div>
-        {b.exerciseIds.length > 0 && <span className="block-detail">{b.exerciseIds.map(exerciseName).join(", ")}</span>}
+        {b.exerciseIds.length > 0 && (
+          <span className="block-detail">
+            {b.exerciseIds.map((id, n) => (b.exerciseSeconds ? `${exerciseName(id)} (${b.exerciseSeconds[n]} s)` : exerciseName(id))).join(", ")}
+          </span>
+        )}
         {b.comboIds.length > 0 && <span className="block-detail">{b.comboIds.length} Kombis im Pool</span>}
 
         <div className="block-foot">

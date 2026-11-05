@@ -5,6 +5,7 @@ export type BlockCategory = "fight" | "fitness" | "frame";
 const CATEGORIES: Record<BlockType, BlockCategory> = {
   shadow: "fight",
   bag: "fight",
+  power: "fight",
   drill: "fight",
   strength: "fitness",
   conditioning: "fitness",

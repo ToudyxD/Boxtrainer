@@ -1,4 +1,5 @@
 import type { Block, BlockType, Combo, Exercise, Level, Library, Style, Training } from "./models";
+import { roundSecondsAt } from "./blockTime";
 import { createRng, type Rng } from "./rng";
 
 export const COUNTDOWN_SECONDS = 10;
@@ -19,8 +20,8 @@ const FREESTYLE_CHANCE = 0.04;
 const DEFENSE_CHANCE = 0.12;
 const PAUSE_BASE: Record<1 | 2 | 3, number> = { 1: 6, 2: 3.5, 3: 1.8 };
 
-const COMBAT: ReadonlySet<BlockType> = new Set(["shadow", "bag"]);
-const DRIVEN: ReadonlySet<BlockType> = new Set(["shadow", "bag", "conditioning", "circuit"]);
+const COMBAT: ReadonlySet<BlockType> = new Set(["shadow", "bag", "power"]);
+const DRIVEN: ReadonlySet<BlockType> = new Set(["shadow", "bag", "power", "conditioning", "circuit"]);
 
 interface Base {
   at: number;
@@ -108,7 +109,7 @@ function exerciseFor(block: Block, roundIndex: number, ctx: Ctx): { exerciseId?:
 }
 
 function workEvents(block: Block, roundIndex: number, start: number, bag: ComboBag, ctx: Ctx): TimelineEvent[] {
-  const L = block.roundSeconds;
+  const L = roundSecondsAt(block, roundIndex);
   const base = { blockId: block.id, roundIndex };
   const at = (rel: number): number => start + rel;
   const events: TimelineEvent[] = [];
@@ -209,11 +210,12 @@ export function buildTimeline(training: Training, library: Library, options: Tim
     t += TRANSITION_SECONDS;
 
     for (let r = 0; r < block.rounds; r++) {
-      const work: Segment = { kind: "work", blockId: block.id, blockIndex, roundIndex: r, start: t, end: t + block.roundSeconds };
+      const roundLength = roundSecondsAt(block, r);
+      const work: Segment = { kind: "work", blockId: block.id, blockIndex, roundIndex: r, start: t, end: t + roundLength };
       if (block.exerciseIds.length > 0) work.exerciseId = block.exerciseIds[r % block.exerciseIds.length] as string;
       segments.push(work);
       events.push(...workEvents(block, r, t, bag, ctx));
-      t += block.roundSeconds;
+      t += roundLength;
 
       if (r === block.rounds - 1 || block.restSeconds <= 0) continue;
 

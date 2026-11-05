@@ -42,7 +42,7 @@ export interface EquipmentProfile {
   tags: EquipmentTag[];
 }
 
-export type ExerciseCategory = "drill" | "strength" | "conditioning" | "mobility" | "core";
+export type ExerciseCategory = "drill" | "power" | "strength" | "conditioning" | "mobility" | "core";
 
 export type BodyArea =
   | "thigh-front"
@@ -96,6 +96,7 @@ export type BlockType =
   | "shadow"
   | "drill"
   | "bag"
+  | "power"
   | "strength"
   | "conditioning"
   | "core"
@@ -114,10 +115,12 @@ export interface Block {
   announceDensity: 1 | 2 | 3;
   comboIds: string[];
   exerciseIds: string[];
+  /** Rundenlänge je Übung (parallel zu exerciseIds), falls die Übungen ihre Dauer mitbringen. */
+  exerciseSeconds?: number[];
   focusTheme?: string;
 }
 
-export type TrainingType = "technique" | "stamina" | "strength" | "strength-endurance" | "single";
+export type TrainingType = "technique" | "stamina" | "power" | "strength" | "strength-endurance" | "single";
 
 export interface Training {
   id: string;

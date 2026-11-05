@@ -21,6 +21,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   shadow: "Schattenboxen",
   drill: "Technik-Drill",
   bag: "Sackarbeit",
+  power: "Power",
   strength: "Kraft",
   conditioning: "Kondition",
   core: "Rumpf",

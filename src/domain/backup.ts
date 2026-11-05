@@ -16,6 +16,7 @@ const BLOCK_TYPES: Record<BlockType, true> = {
   shadow: true,
   drill: true,
   bag: true,
+  power: true,
   strength: true,
   conditioning: true,
   core: true,
@@ -26,6 +27,7 @@ const BLOCK_TYPES: Record<BlockType, true> = {
 const TRAINING_TYPES: Record<TrainingType, true> = {
   technique: true,
   stamina: true,
+  power: true,
   strength: true,
   "strength-endurance": true,
   single: true,
@@ -70,7 +72,14 @@ function validateBlock(raw: unknown, path: string): string {
   num(raw, "roundSeconds", path, 1);
   num(raw, "restSeconds", path);
   strArray(raw, "comboIds", path);
-  strArray(raw, "exerciseIds", path);
+  const exerciseIds = strArray(raw, "exerciseIds", path);
+  const seconds = raw["exerciseSeconds"];
+  if (seconds !== undefined) {
+    if (!Array.isArray(seconds) || seconds.some((s) => typeof s !== "number" || !Number.isFinite(s) || s < 1)) {
+      fail(`${path}.exerciseSeconds`, "Liste von Zahlen >= 1 erwartet");
+    }
+    if (seconds.length !== exerciseIds.length) fail(`${path}.exerciseSeconds`, "muss genauso lang sein wie exerciseIds");
+  }
   return id;
 }
 

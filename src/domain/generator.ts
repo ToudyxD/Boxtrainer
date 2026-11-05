@@ -12,6 +12,7 @@ import type {
   Training,
 } from "./models";
 import { exerciseGroups } from "./bodyAreas";
+import { blockSeconds, type Timed } from "./blockTime";
 import { createRng, type Rng } from "./rng";
 import { BLOCK_TEMPLATES, MIN_ROUNDS, TRAINING_TEMPLATES, maxRounds, type BlockTemplate, type TemplateTrainingType } from "./templates";
 
@@ -54,15 +55,7 @@ const MIN_POOL = 4;
 const MAX_POOL = 8;
 const MAX_SCALE_STEPS = 200;
 
-interface Timed {
-  rounds: number;
-  roundSeconds: number;
-  restSeconds: number;
-}
-
-export function blockSeconds(b: Timed): number {
-  return b.rounds * b.roundSeconds + Math.max(b.rounds - 1, 0) * b.restSeconds;
-}
+export { blockSeconds };
 
 function weightedSample<T>(items: readonly T[], weight: (item: T) => number, n: number, rng: Rng): T[] {
   const pool = [...items];
@@ -174,11 +167,11 @@ function resolveTemplate(t: BlockTemplate, available: ReadonlySet<EquipmentTag>)
   if (!t.fallback) {
     throw new GeneratorError(`Block "${t.key}": Equipment fehlt (${missing.join(", ")}) und es gibt keine Ersatzregel`);
   }
-  return { ...t, ...t.fallback, fallback: undefined };
+  return { ...t, exercises: undefined, ...t.fallback, fallback: undefined };
 }
 
 /** Passt die Rundenzahlen skalierbarer Blöcke schrittweise an die Zieldauer an. */
-function scaleRounds(templates: readonly BlockTemplate[], targetSeconds: number): number[] {
+function scaleRounds(templates: ReadonlyArray<Timed & { scale?: BlockTemplate["scale"] }>, targetSeconds: number): number[] {
   const rounds = templates.map((t) => t.rounds);
   const total = (): number => templates.reduce((sum, t, i) => sum + blockSeconds({ ...t, rounds: rounds[i] as number }), 0);
 
@@ -248,8 +241,24 @@ function pickExercises(t: BlockTemplate, ctx: BuildContext): string[] {
   return picked.map((e) => e.id);
 }
 
+function exerciseSecondsOf(id: string, library: Library): number {
+  const exercise = library.exercises.find((e) => e.id === id);
+  if (!exercise) throw new GeneratorError(`Unbekannte Übung ${id}`);
+  if (exercise.format.kind !== "time") throw new GeneratorError(`Übung ${id}: eigene Rundenlänge braucht ein Zeitformat`);
+  return exercise.format.seconds;
+}
+
+/** Zweiter Durchgang für Blöcke mit Rundenlänge je Übung: nach der Auswahl stehen die echten Längen fest. */
+function refineRounds(blocks: Block[], templates: readonly BlockTemplate[], targetSeconds: number): Block[] {
+  if (!blocks.some((b) => b.exerciseSeconds)) return blocks;
+  const items = blocks.map((b, i) => ({ ...b, ...(b.exerciseSeconds && templates[i]?.scale ? { scale: templates[i].scale } : {}) }));
+  const rounds = scaleRounds(items, targetSeconds);
+  return blocks.map((b, i) => ({ ...b, rounds: rounds[i] as number }));
+}
+
 function buildBlock(t: BlockTemplate, rounds: number, id: string, ctx: BuildContext): Block {
   const isCombat = t.type === "shadow" || t.type === "bag";
+  const exerciseIds = pickExercises(t, ctx);
   return {
     id,
     type: t.type,
@@ -259,7 +268,8 @@ function buildBlock(t: BlockTemplate, rounds: number, id: string, ctx: BuildCont
     announceMode: t.announceMode,
     announceDensity: t.announceDensity,
     comboIds: isCombat ? pickCombos(t, rounds, ctx) : [],
-    exerciseIds: pickExercises(t, ctx),
+    exerciseIds,
+    ...(t.exercises?.ownSeconds ? { exerciseSeconds: exerciseIds.map((e) => exerciseSecondsOf(e, ctx.library)) } : {}),
     ...(t.usesFocus && ctx.focus ? { focusTheme: ctx.focus } : {}),
   };
 }
@@ -299,7 +309,11 @@ export function generateTraining(input: GeneratorInput, library: Library): Train
     equipmentProfileId: input.equipment.id,
     targetMinutes: input.targetMinutes,
     ...(focus ? { focusTheme: focus } : {}),
-    blocks: templates.map((t, i) => buildBlock(t, rounds[i] as number, `${id}-b${i}`, ctx)),
+    blocks: refineRounds(
+      templates.map((t, i) => buildBlock(t, rounds[i] as number, `${id}-b${i}`, ctx)),
+      templates,
+      input.targetMinutes * 60,
+    ),
   };
 }
 
@@ -329,7 +343,7 @@ export function generateSingleBlock(input: SingleBlockInput, library: Library): 
     equipmentProfileId: input.equipment.id,
     targetMinutes: input.targetMinutes,
     ...(focus ? { focusTheme: focus } : {}),
-    blocks: [buildBlock(template, rounds as number, `${id}-b0`, ctx)],
+    blocks: refineRounds([buildBlock(template, rounds as number, `${id}-b0`, ctx)], [template], input.targetMinutes * 60),
   };
 }
 
@@ -367,7 +381,13 @@ export function rerollBlock(training: Training, blockIndex: number, input: Conte
   const template: BlockTemplate = { ...BLOCK_TEMPLATES[block.type], type: block.type, usesFocus: block.focusTheme !== undefined };
   const ctx = createContext(input, library, createRng(seed), block.focusTheme, block);
   const fresh = buildBlock(template, block.rounds, block.id, ctx);
-  return withBlock(training, blockIndex, { ...block, comboIds: fresh.comboIds, exerciseIds: fresh.exerciseIds });
+  const { exerciseSeconds: _old, ...kept } = block;
+  return withBlock(training, blockIndex, {
+    ...kept,
+    comboIds: fresh.comboIds,
+    exerciseIds: fresh.exerciseIds,
+    ...(fresh.exerciseSeconds ? { exerciseSeconds: fresh.exerciseSeconds } : {}),
+  });
 }
 
 /** Ersetzt einen Block durch einen neu erzeugten Block eines anderen Typs (inkl. Equipment-Ersatzregel). */
