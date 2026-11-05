@@ -1,6 +1,7 @@
 import type {
   Block,
   BlockType,
+  BodyGroup,
   Combo,
   EquipmentProfile,
   EquipmentTag,
@@ -10,6 +11,7 @@ import type {
   Style,
   Training,
 } from "./models";
+import { exerciseGroups } from "./bodyAreas";
 import { createRng, type Rng } from "./rng";
 import { BLOCK_TEMPLATES, MIN_ROUNDS, TRAINING_TEMPLATES, maxRounds, type BlockTemplate, type TemplateTrainingType } from "./templates";
 
@@ -97,6 +99,28 @@ function selectWithChallenge<T extends { level: Level }>(
   const picked = weightedSample(main, weight, n - wantChallenge, rng);
   const rest = n - picked.length;
   return [...picked, ...weightedSample(challenge, weight, rest, rng)];
+}
+
+/** Wählt zuerst je Körperbereich eine Übung (bis zum Nutzerlevel), füllt dann auf und mischt die Reihenfolge. */
+function selectCovering(
+  pool: readonly Exercise[],
+  groups: readonly BodyGroup[],
+  n: number,
+  userLevel: Level,
+  weight: (e: Exercise) => number,
+  rng: Rng,
+): Exercise[] {
+  const chosen: Exercise[] = [];
+  for (const group of groups) {
+    if (chosen.length >= n) break;
+    if (chosen.some((e) => exerciseGroups(e).has(group))) continue;
+    const candidates = pool.filter((e) => e.level <= userLevel && !chosen.includes(e) && exerciseGroups(e).has(group));
+    chosen.push(...weightedSample(candidates, weight, 1, rng));
+  }
+  const rest = pool.filter((e) => !chosen.includes(e));
+  const filler = selectWithChallenge(rest, userLevel, n - chosen.length, weight, rng);
+  const all = [...chosen, ...filler];
+  return weightedSample(all, () => 1, all.length, rng);
 }
 
 function recentIds(history: readonly HistoryEntry[], pick: (h: HistoryEntry) => string[]): Set<string> {
@@ -215,7 +239,9 @@ function pickExercises(t: BlockTemplate, ctx: BuildContext): string[] {
   const weight = (e: Exercise): number =>
     (ctx.recentExercises.has(e.id) ? RECENT_FACTOR : 1) * (t.usesFocus && ctx.focus && e.themes?.includes(ctx.focus) ? FOCUS_FACTOR * 2 : 1);
 
-  const picked = selectWithChallenge(pool, ctx.input.level, spec.count, weight, ctx.rng);
+  const picked = spec.cover
+    ? selectCovering(pool, spec.cover, spec.count, ctx.input.level, weight, ctx.rng)
+    : selectWithChallenge(pool, ctx.input.level, spec.count, weight, ctx.rng);
   if (picked.length === 0) {
     throw new GeneratorError(`Block "${t.key}": keine Übung für Equipment-Profil "${ctx.input.equipment.name}"`);
   }

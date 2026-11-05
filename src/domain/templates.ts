@@ -1,5 +1,5 @@
 import { BLOCK_LABELS } from "./cues";
-import type { AnnounceMode, BlockType, EquipmentTag, ExerciseCategory, Training, TrainingType } from "./models";
+import type { AnnounceMode, BlockType, BodyGroup, EquipmentTag, ExerciseCategory, Training, TrainingType } from "./models";
 
 export type TemplateTrainingType = Exclude<TrainingType, "single">;
 
@@ -20,6 +20,8 @@ export interface BlockTemplate {
     count: number;
     maxIntensity?: 1 | 2 | 3;
     phase?: "warmup" | "cooldown";
+    /** Körperbereiche, die die Auswahl möglichst alle abdecken soll. */
+    cover?: BodyGroup[];
   };
 }
 
@@ -37,7 +39,7 @@ const warmup: BlockTemplate = {
   restSeconds: 0,
   announceMode: "cues-only",
   announceDensity: 1,
-  exercises: { categories: ["mobility", "conditioning"], count: 6, maxIntensity: 2, phase: "warmup" },
+  exercises: { categories: ["mobility", "conditioning"], count: 6, maxIntensity: 2, phase: "warmup", cover: ["legs", "upper", "core"] },
 };
 
 const cooldown = (rounds: number): BlockTemplate => ({
@@ -48,7 +50,7 @@ const cooldown = (rounds: number): BlockTemplate => ({
   restSeconds: 0,
   announceMode: "cues-only",
   announceDensity: 1,
-  exercises: { categories: ["mobility"], count: 7, maxIntensity: 1, phase: "cooldown" },
+  exercises: { categories: ["mobility"], count: 7, maxIntensity: 1, phase: "cooldown", cover: ["legs", "upper", "core"] },
 });
 
 const shadow = (key: string, rounds: number, density: 1 | 2 | 3, scale: BlockTemplate["scale"], usesFocus = false): BlockTemplate => ({

@@ -149,6 +149,17 @@ describe("buildTimeline", () => {
       }
     });
 
+    it("wiederholt auch über Rundengrenzen hinweg keine Kombi direkt hintereinander", () => {
+      for (let seed = 1; seed <= 40; seed++) {
+        const tr = training("stamina", seed);
+        const bag = tr.blocks.find((b) => b.type === "bag")!;
+        const ids = announcements(build(tr, seed).events)
+          .filter((a) => a.kind === "combo" && a.blockId === bag.id)
+          .map((a) => (a.kind === "combo" ? a.comboId : ""));
+        for (let i = 1; i < ids.length; i++) expect(ids[i], `Seed ${seed}, Ansage ${i}`).not.toBe(ids[i - 1]);
+      }
+    });
+
     it("hohe Dichte erzeugt mehr Ansagen als niedrige", () => {
       const count = (density: 1 | 3) => {
         const custom: Training = {

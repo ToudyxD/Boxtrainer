@@ -1,3 +1,4 @@
+import { BODY_AREA_GROUP } from "./bodyAreas";
 import type { Combo, Exercise, Technique } from "./models";
 
 export class ContentError extends Error {}
@@ -78,5 +79,12 @@ export function validateExercises(exercises: readonly Exercise[]): void {
     ids.add(e.id);
     if (e.cues.length < 2 || e.cues.length > 3) throw new ContentError(`Übung ${e.id}: 2 bis 3 Cues erwartet`);
     if (e.styles.length === 0) throw new ContentError(`Übung ${e.id} ohne Stil`);
+    if (!Array.isArray(e.bodyAreas) || e.bodyAreas.length === 0) throw new ContentError(`Übung ${e.id} ohne Körperbereich`);
+    const unknown = e.bodyAreas.find((a) => !(a in BODY_AREA_GROUP));
+    if (unknown !== undefined) throw new ContentError(`Übung ${e.id}: unbekannter Körperbereich "${unknown}"`);
+    if (new Set(e.bodyAreas).size !== e.bodyAreas.length) throw new ContentError(`Übung ${e.id}: doppelter Körperbereich`);
+    if (e.bodyAreas.includes("full-body") && e.bodyAreas.length > 1) {
+      throw new ContentError(`Übung ${e.id}: "full-body" nicht mit anderen Bereichen kombinieren`);
+    }
   }
 }

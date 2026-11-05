@@ -95,7 +95,6 @@ function nextCombo(bag: ComboBag, block: Block, rng: Rng): string {
   }
   const id = bag.queue.pop();
   if (id === undefined) throw new Error(`Block ${block.id} hat keine Kombis`);
-  bag.last = id;
   return id;
 }
 
@@ -145,6 +144,7 @@ function workEvents(block: Block, roundIndex: number, start: number, bag: ComboB
     const roll = ctx.rng.next();
     let len: number;
     let make: (when: number) => TimelineEvent;
+    let drawnCombo: string | undefined;
 
     if (roll < FREESTYLE_CHANCE) {
       len = FREESTYLE_SECONDS;
@@ -155,6 +155,7 @@ function workEvents(block: Block, roundIndex: number, start: number, bag: ComboB
       make = (when) => ({ ...base, kind: "defense", at: when, techniqueId, durationSec: len });
     } else {
       const comboId = nextCombo(bag, block, ctx.rng);
+      drawnCombo = comboId;
       const combo = ctx.combos.get(comboId);
       if (!combo) throw new Error(`Unbekannte Kombi ${comboId}`);
       len = ctx.comboSeconds(combo);
@@ -165,9 +166,13 @@ function workEvents(block: Block, roundIndex: number, start: number, bag: ComboB
     for (const [from, to] of reserved) {
       if (rel < to && rel + len > from) rel = to + 0.5;
     }
-    if (rel + len > L - TAIL_GUARD) break;
+    if (rel + len > L - TAIL_GUARD) {
+      if (drawnCombo !== undefined) bag.queue.push(drawnCombo);
+      break;
+    }
 
     events.push(make(at(rel)));
+    if (drawnCombo !== undefined) bag.last = drawnCombo;
     const pause = PAUSE_BASE[block.announceDensity] * ctx.pauseScale * (0.6 + 0.8 * ctx.rng.next());
     cursor = rel + len + ANNOUNCE_BUFFER + pause;
   }

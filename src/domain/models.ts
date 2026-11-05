@@ -44,6 +44,26 @@ export interface EquipmentProfile {
 
 export type ExerciseCategory = "drill" | "strength" | "conditioning" | "mobility" | "core";
 
+export type BodyArea =
+  | "thigh-front"
+  | "hamstrings"
+  | "calves"
+  | "hips"
+  | "glutes"
+  | "chest"
+  | "back"
+  | "shoulders"
+  | "neck"
+  | "biceps"
+  | "triceps"
+  | "forearms"
+  | "abs"
+  | "obliques"
+  | "lower-back"
+  | "full-body";
+
+export type BodyGroup = "legs" | "upper" | "arms" | "core" | "full";
+
 export type ExerciseFormat =
   | { kind: "time"; seconds: number }
   | { kind: "reps"; reps: number; sets: number }
@@ -62,6 +82,7 @@ export interface Exercise {
   cues: string[];
   themes?: string[];
   phases?: Array<"warmup" | "cooldown">;
+  bodyAreas: BodyArea[];
 }
 
 export interface Library {
