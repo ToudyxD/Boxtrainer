@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,json,mp3,m4a,wav}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,json,mp3,m4a,wav,woff2}"],
       },
       manifest: {
         name: "Boxtrainer",

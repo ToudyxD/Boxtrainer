@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_EQUIPMENT_PROFILES, loadLibrary } from "../content";
 import { BLOCK_LABELS } from "../domain/cues";
 import {
@@ -17,8 +17,16 @@ import {
   type HistoryEntry,
 } from "../domain/generator";
 import type { Block, BlockType, Level, Style, Training } from "../domain/models";
-import { BLOCK_TEMPLATES, MIN_ROUNDS, TRAINING_TEMPLATES, maxRounds, type TemplateTrainingType } from "../domain/templates";
+import {
+  BLOCK_TEMPLATES,
+  MIN_ROUNDS,
+  TRAINING_TEMPLATES,
+  maxRounds,
+  trainingLabel,
+  type TemplateTrainingType,
+} from "../domain/templates";
 import { getSessionService } from "../services/appServices";
+import { blockCategory } from "./blockStyle";
 import { useStoredState } from "./useStoredState";
 
 export interface StartRequest {
@@ -70,7 +78,6 @@ const BLOCK_TYPES = Object.keys(BLOCK_TEMPLATES) as BlockType[];
 
 const LEVEL_LABELS: Record<Level, string> = { 1: "Grundlagen", 2: "Aufbau", 3: "Fortgeschritten" };
 const STYLE_LABELS: Record<Style, string> = { boxing: "Boxen", kickboxing: "Kickboxen (K-1)" };
-const fmtMin = (seconds: number): string => `${Math.round(seconds / 60)} min`;
 const newSeed = (): number => Date.now() % 1_000_000;
 
 type Generated = { ok: true; training: Training; seed: number } | { ok: false; error: string };
@@ -85,6 +92,7 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
   const [config, setConfig] = useStoredState<Config>("boxtrainer.config.v1", DEFAULT_CONFIG);
   const [generated, setGenerated] = useState<Generated | null>(null);
   const [editError, setEditError] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [swapping, setSwapping] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
@@ -117,6 +125,7 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
     const seed = newSeed();
     const focus = focusFor(cfg);
     setEditError("");
+    setExpanded(null);
     setSwapping(null);
     setConfirmRemove(null);
     try {
@@ -163,107 +172,120 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
   const exerciseName = (id: string): string => library.exercises.find((e) => e.id === id)?.name ?? id;
   const training = generated?.ok ? generated.training : null;
 
-  const renderBlock = (b: Block, i: number, blocks: Block[]) => (
-    <li key={b.id}>
-      <div className="block-head">
-        <strong>{BLOCK_LABELS[b.type]}</strong>
-        <span>{fmtMin(blockSeconds(b))}</span>
-      </div>
-      <span>
-        {b.rounds} × {b.roundSeconds >= 60 ? fmtMin(b.roundSeconds) : `${b.roundSeconds} s`}
-        {b.restSeconds > 0 ? `, ${b.restSeconds} s Pause` : ""}
-      </span>
-      {b.exerciseIds.length > 0 && <small>{b.exerciseIds.map(exerciseName).join(", ")}</small>}
-      {b.comboIds.length > 0 && <small>{b.comboIds.length} Kombis im Pool</small>}
-
-      <div className="block-tools">
-        <div className="stepper" role="group" aria-label={`Runden ${BLOCK_LABELS[b.type]}`}>
-          <button className="ghost" aria-label="Eine Runde weniger" disabled={b.rounds <= MIN_ROUNDS} onClick={() => edit((t) => setRounds(t, i, b.rounds - 1))}>
-            −
-          </button>
-          <span>{b.rounds} Runden</span>
-          <button className="ghost" aria-label="Eine Runde mehr" disabled={b.rounds >= maxRounds(b.type)} onClick={() => edit((t) => setRounds(t, i, b.rounds + 1))}>
-            +
-          </button>
+  const renderBlock = (b: Block, i: number, blocks: Block[]) => {
+    const open = expanded === b.id;
+    const roundLength = b.roundSeconds >= 60 ? `${Math.round(b.roundSeconds / 60)} min` : `${b.roundSeconds} s`;
+    return (
+      <li key={b.id} className={`block ${blockCategory(b.type)}`}>
+        <div className="block-head">
+          <span className="block-name">{BLOCK_LABELS[b.type]}</span>
+          <span className="block-meta">
+            {b.rounds} × {roundLength}
+            {b.restSeconds > 0 ? `, ${b.restSeconds} s Pause` : ""}
+          </span>
+          <span className="dur">
+            {Math.round(blockSeconds(b) / 60)}
+            <small>min</small>
+          </span>
         </div>
-        {blocks.length > 1 && (
-          <div className="stepper">
-            <button className="ghost" disabled={i === 0} onClick={() => edit((t) => moveBlock(t, i, i - 1))}>
-              Hoch
+        {b.exerciseIds.length > 0 && <span className="block-detail">{b.exerciseIds.map(exerciseName).join(", ")}</span>}
+        {b.comboIds.length > 0 && <span className="block-detail">{b.comboIds.length} Kombis im Pool</span>}
+
+        <div className="block-foot">
+          <div className="stepper" role="group" aria-label={`Runden ${BLOCK_LABELS[b.type]}`}>
+            <button aria-label="Eine Runde weniger" disabled={b.rounds <= MIN_ROUNDS} onClick={() => edit((t) => setRounds(t, i, b.rounds - 1))}>
+              −
             </button>
-            <button className="ghost" disabled={i === blocks.length - 1} onClick={() => edit((t) => moveBlock(t, i, i + 1))}>
-              Runter
+            <span>{b.rounds} Runden</span>
+            <button aria-label="Eine Runde mehr" disabled={b.rounds >= maxRounds(b.type)} onClick={() => edit((t) => setRounds(t, i, b.rounds + 1))}>
+              +
             </button>
           </div>
-        )}
-      </div>
-
-      <div className="block-tools">
-        <button className="ghost" onClick={() => edit((t) => rerollBlock(t, i, contentInput(config), library, newSeed()))}>
-          Neu würfeln
-        </button>
-        <button className="ghost" aria-expanded={swapping === b.id} onClick={() => setSwapping(swapping === b.id ? null : b.id)}>
-          Tauschen
-        </button>
-        {blocks.length > 1 && (
-          <button className="ghost" onClick={() => setConfirmRemove(confirmRemove === b.id ? null : b.id)}>
-            Entfernen
-          </button>
-        )}
-      </div>
-
-      {swapping === b.id && (
-        <label>
-          Tauschen gegen
-          <select
-            value=""
-            onChange={(e) => {
-              const type = e.target.value as BlockType;
-              edit((t) => replaceBlock(t, i, type, contentInput(config), library, newSeed()));
-            }}
-          >
-            <option value="" disabled>
-              Blocktyp wählen …
-            </option>
-            {BLOCK_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {BLOCK_LABELS[type]}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      {confirmRemove === b.id && (
-        <div className="block-tools">
-          <button className="danger" onClick={() => edit((t) => removeBlock(t, i))}>
-            Block entfernen
-          </button>
-          <button className="ghost" onClick={() => setConfirmRemove(null)}>
-            Abbrechen
+          <button className="ghost" aria-expanded={open} onClick={() => setExpanded(open ? null : b.id)}>
+            {open ? "Weniger" : "Bearbeiten"}
           </button>
         </div>
-      )}
-    </li>
-  );
+
+        {open && (
+          <div className="block-actions">
+            <button className="ghost" onClick={() => edit((t) => rerollBlock(t, i, contentInput(config), library, newSeed()))}>
+              Neu würfeln
+            </button>
+            <button className="ghost" aria-expanded={swapping === b.id} onClick={() => setSwapping(swapping === b.id ? null : b.id)}>
+              Tauschen
+            </button>
+            {blocks.length > 1 && (
+              <>
+                <button className="ghost" disabled={i === 0} onClick={() => edit((t) => moveBlock(t, i, i - 1))}>
+                  Hoch
+                </button>
+                <button className="ghost" disabled={i === blocks.length - 1} onClick={() => edit((t) => moveBlock(t, i, i + 1))}>
+                  Runter
+                </button>
+              </>
+            )}
+
+            {swapping === b.id && (
+              <label>
+                Tauschen gegen
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const type = e.target.value as BlockType;
+                    edit((t) => replaceBlock(t, i, type, contentInput(config), library, newSeed()));
+                  }}
+                >
+                  <option value="" disabled>
+                    Blocktyp wählen …
+                  </option>
+                  {BLOCK_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {BLOCK_LABELS[type]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {blocks.length > 1 &&
+              (confirmRemove === b.id ? (
+                <>
+                  <button className="danger" onClick={() => edit((t) => removeBlock(t, i))}>
+                    Block entfernen
+                  </button>
+                  <button className="ghost" onClick={() => setConfirmRemove(null)}>
+                    Abbrechen
+                  </button>
+                </>
+              ) : (
+                <button className="ghost wide" onClick={() => setConfirmRemove(b.id)}>
+                  Entfernen
+                </button>
+              ))}
+          </div>
+        )}
+      </li>
+    );
+  };
 
   return (
     <main>
-      <h1>Training</h1>
+      <header className="screen-head">
+        <h1>Training</h1>
+      </header>
 
-      <section>
-        <div className="segmented" role="group" aria-label="Umfang">
-          <button className={config.mode === "full" ? "selected" : "ghost"} aria-pressed={config.mode === "full"} onClick={() => update({ mode: "full" })}>
-            Komplettes Training
-          </button>
-          <button className={config.mode === "single" ? "selected" : "ghost"} aria-pressed={config.mode === "single"} onClick={() => update({ mode: "single" })}>
-            Einzelner Block
-          </button>
-        </div>
+      <div className="segmented" role="group" aria-label="Umfang">
+        <button aria-pressed={config.mode === "full"} onClick={() => update({ mode: "full" })}>
+          Komplettes Training
+        </button>
+        <button aria-pressed={config.mode === "single"} onClick={() => update({ mode: "single" })}>
+          Einzelner Block
+        </button>
+      </div>
 
+      <div className="list">
         {config.mode === "full" ? (
-          <label>
-            Typ
+          <Field label="Typ">
             <select value={config.type} onChange={(e) => update({ type: e.target.value as TemplateTrainingType })}>
               {Object.values(TRAINING_TEMPLATES).map((t) => (
                 <option key={t.type} value={t.type}>
@@ -271,10 +293,9 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
                 </option>
               ))}
             </select>
-          </label>
+          </Field>
         ) : (
-          <label>
-            Block
+          <Field label="Block">
             <select value={config.blockType} onChange={(e) => update({ blockType: e.target.value as BlockType })}>
               {BLOCK_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -282,10 +303,9 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
                 </option>
               ))}
             </select>
-          </label>
+          </Field>
         )}
-        <label>
-          Ort
+        <Field label="Ort">
           <select value={config.equipmentId} onChange={(e) => update({ equipmentId: e.target.value })}>
             {DEFAULT_EQUIPMENT_PROFILES.map((p) => (
               <option key={p.id} value={p.id}>
@@ -293,9 +313,8 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
               </option>
             ))}
           </select>
-        </label>
-        <label>
-          Dauer
+        </Field>
+        <Field label="Dauer">
           {config.mode === "full" ? (
             <select value={config.minutes} onChange={(e) => update({ minutes: Number(e.target.value) })}>
               {FULL_MINUTES.map((m) => (
@@ -313,9 +332,8 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
               ))}
             </select>
           )}
-        </label>
-        <label>
-          Stil
+        </Field>
+        <Field label="Stil">
           <select value={config.style} onChange={(e) => update({ style: e.target.value as Style })}>
             {Object.entries(STYLE_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
@@ -323,19 +341,8 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
               </option>
             ))}
           </select>
-        </label>
-        <label>
-          Ansage-Pausen
-          <select value={config.pace} onChange={(e) => setConfig({ ...config, pace: e.target.value as Pace })}>
-            {Object.entries(PACES).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Level
+        </Field>
+        <Field label="Level">
           <select value={config.level} onChange={(e) => update({ level: Number(e.target.value) as Level })}>
             {([1, 2, 3] as const).map((l) => (
               <option key={l} value={l}>
@@ -343,51 +350,79 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
               </option>
             ))}
           </select>
-        </label>
+        </Field>
         {showFocus && (
-          <label>
-            Fokus-Thema
+          <Field label="Fokus">
             <select value={focusFor(config)} onChange={(e) => update({ focus: e.target.value })}>
-              <option value="">Automatisch (am längsten nicht trainiert)</option>
+              <option value="">Automatisch</option>
               {themes.map((t) => (
                 <option key={t}>{t}</option>
               ))}
             </select>
-          </label>
+          </Field>
         )}
-        <button disabled={history === null} onClick={() => generate(config)}>
+        <Field label="Ansage-Pausen">
+          <select value={config.pace} onChange={(e) => setConfig({ ...config, pace: e.target.value as Pace })}>
+            {Object.entries(PACES).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      <div className="cta-row">
+        <button className={generated ? "ghost big" : "huge"} disabled={history === null} onClick={() => generate(config)}>
           {generated ? "Alles neu würfeln" : config.mode === "single" ? "Block erstellen" : "Training erstellen"}
         </button>
-      </section>
+      </div>
 
       {historyError && <p className="warn">Verlauf nicht verfügbar, Abwechslung eingeschränkt: {historyError}</p>}
 
       {generated && !generated.ok && <p className="error">{generated.error}</p>}
 
       {generated?.ok && training && (
-        <section>
-          <h2>
-            Vorschau · {fmtMin(trainingSeconds(training))}
-            {training.focusTheme ? ` · ${training.focusTheme}` : ""}
-          </h2>
+        <>
+          <div className="preview-head">
+            <div>
+              <h2>{trainingLabel(training)}</h2>
+              {training.focusTheme && <p>Fokus: {training.focusTheme}</p>}
+            </div>
+            <div className="total" aria-label={`Gesamtdauer ${Math.round(trainingSeconds(training) / 60)} Minuten`}>
+              {Math.round(trainingSeconds(training) / 60)}
+              <small>min</small>
+            </div>
+          </div>
           {editError && <p className="error">{editError}</p>}
           <ol className="blocks">{training.blocks.map(renderBlock)}</ol>
-          <button
-            className="big"
-            onClick={() =>
-              onStart({
-                training,
-                seed: generated.seed,
-                style: config.style,
-                level: config.level,
-                pauseScale: PACES[config.pace]?.scale ?? 1,
-              })
-            }
-          >
-            Starten
-          </button>
-        </section>
+          <div className="startbar">
+            <button
+              className="huge"
+              onClick={() =>
+                onStart({
+                  training,
+                  seed: generated.seed,
+                  style: config.style,
+                  level: config.level,
+                  pauseScale: PACES[config.pace]?.scale ?? 1,
+                })
+              }
+            >
+              Starten
+            </button>
+          </div>
+        </>
       )}
     </main>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }

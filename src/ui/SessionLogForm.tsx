@@ -35,7 +35,7 @@ export function SessionLogForm({ title, summary, onSave, onDiscard }: Props) {
   };
 
   return (
-    <main className="player">
+    <main className="log-screen">
       <h1>{title}</h1>
       <p>{summary}</p>
 

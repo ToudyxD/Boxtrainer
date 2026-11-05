@@ -12,6 +12,7 @@
     "clips": "tsx --env-file-if-exists=.env.local scripts/generate-clips.ts"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
     "dexie": "^4.4.7",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

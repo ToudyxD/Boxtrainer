@@ -3,12 +3,13 @@ import { BLOCK_LABELS } from "../domain/cues";
 import type { Session } from "../domain/models";
 import { trainingLabel } from "../domain/templates";
 import { getSessionService } from "../services/appServices";
+import { fmtDuration } from "./blockStyle";
 import { saveTextFile } from "./saveFile";
 
 const fmtDate = (iso: string): string =>
   new Date(iso).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-const fmtMin = (seconds: number): string => `${Math.round(seconds / 60)} min`;
+const rpeLevel = (rpe: number): "low" | "mid" | "high" => (rpe <= 4 ? "low" : rpe <= 7 ? "mid" : "high");
 
 export function HistoryScreen() {
   const [sessions, setSessions] = useState<Session[] | null>(null);
@@ -56,11 +57,18 @@ export function HistoryScreen() {
 
   return (
     <main>
-      <h1>Verlauf</h1>
+      <header className="screen-head">
+        <h1>Verlauf</h1>
+      </header>
 
       {error && <p className="error">{error}</p>}
       {message && <p>{message}</p>}
-      {sessions?.length === 0 && <p>Noch keine Einheit gespeichert.</p>}
+      {sessions?.length === 0 && (
+        <section className="empty">
+          <strong>Noch keine Einheit gespeichert</strong>
+          <p>Erstelle im Tab Training eine Einheit und schließe sie ab, dann erscheint sie hier.</p>
+        </section>
+      )}
 
       <ul className="history">
         {sessions?.map((s) => {
@@ -69,12 +77,15 @@ export function HistoryScreen() {
           return (
             <li key={s.id}>
               <button className="row-button" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : s.id)}>
-                <span>
+                <span className="hist-main">
                   <strong>{trainingLabel(s.training)}</strong>
-                  {s.training.focusTheme ? ` · ${s.training.focusTheme}` : ""}
+                  {s.training.focusTheme && <small>Fokus: {s.training.focusTheme}</small>}
+                  <small>
+                    {fmtDate(s.date)}, {fmtDuration(s.actualSeconds)}
+                  </small>
                 </span>
-                <span>
-                  {fmtDate(s.date)} · {fmtMin(s.actualSeconds)} · RPE {s.rpe}
+                <span className="rpe-badge" data-level={rpeLevel(s.rpe)} aria-label={`Belastung ${s.rpe} von 10`}>
+                  {s.rpe}
                 </span>
               </button>
               {expanded && (
