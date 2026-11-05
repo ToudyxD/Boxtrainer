@@ -59,7 +59,7 @@ describe("Power-Übungen", () => {
     const secs = (id: string) => byId.get(id)?.format;
     expect(secs("power-hooks")).toEqual({ kind: "time", seconds: 60 });
     expect(secs("dempsey-roll")).toEqual({ kind: "time", seconds: 30 });
-    for (const name of ["Power Hooks", "Dempsey Roll", "Raffal Hook", "Right Power Punch", "Double Hook", "Non Stop Punch"]) {
+    for (const name of ["Power Hooks", "Dempsey Roll", "Raffal Hook", "Backhand Power Punch", "Double Hook", "Non Stop Punch"]) {
       expect(power.map((e) => e.name), name).toContain(name);
     }
   });
