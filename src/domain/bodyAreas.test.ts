@@ -106,9 +106,9 @@ describe("Abdeckung in Aufwärmen und Cooldown", () => {
     },
   );
 
-  it("Aufwärmen hat 6 Übungen, Cooldown 7", () => {
+  it("Aufwärmen hat 8 Übungen, Cooldown 7", () => {
     const t = generateTraining(input("home", "boxing", 1, 3), library);
-    expect(t.blocks.find((b) => b.type === "warmup")?.exerciseIds).toHaveLength(6);
+    expect(t.blocks.find((b) => b.type === "warmup")?.exerciseIds).toHaveLength(8);
     expect(t.blocks.find((b) => b.type === "cooldown")?.exerciseIds).toHaveLength(7);
   });
 

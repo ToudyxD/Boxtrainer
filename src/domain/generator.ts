@@ -1,7 +1,7 @@
 import type {
   Block,
   BlockType,
-  BodyGroup,
+  BodyTarget,
   Combo,
   EquipmentProfile,
   EquipmentTag,
@@ -11,7 +11,7 @@ import type {
   Style,
   Training,
 } from "./models";
-import { exerciseGroups } from "./bodyAreas";
+import { exerciseCovers } from "./bodyAreas";
 import { blockSeconds, type Timed } from "./blockTime";
 import { createRng, type Rng } from "./rng";
 import { BLOCK_TEMPLATES, MIN_ROUNDS, TRAINING_TEMPLATES, maxRounds, type BlockTemplate, type TemplateTrainingType } from "./templates";
@@ -97,7 +97,7 @@ function selectWithChallenge<T extends { level: Level }>(
 /** Wählt zuerst je Körperbereich eine Übung (bis zum Nutzerlevel), füllt dann auf und mischt die Reihenfolge. */
 function selectCovering(
   pool: readonly Exercise[],
-  groups: readonly BodyGroup[],
+  groups: readonly BodyTarget[],
   n: number,
   userLevel: Level,
   weight: (e: Exercise) => number,
@@ -106,8 +106,8 @@ function selectCovering(
   const chosen: Exercise[] = [];
   for (const group of groups) {
     if (chosen.length >= n) break;
-    if (chosen.some((e) => exerciseGroups(e).has(group))) continue;
-    const candidates = pool.filter((e) => e.level <= userLevel && !chosen.includes(e) && exerciseGroups(e).has(group));
+    if (chosen.some((e) => exerciseCovers(e, group))) continue;
+    const candidates = pool.filter((e) => e.level <= userLevel && !chosen.includes(e) && exerciseCovers(e, group));
     chosen.push(...weightedSample(candidates, weight, 1, rng));
   }
   const rest = pool.filter((e) => !chosen.includes(e));
@@ -254,15 +254,35 @@ function roundEntries(id: string, library: Library): RoundEntry[] {
   const f = exercise.format;
   if (f.kind === "time") return [{ id, seconds: f.seconds, rest: f.restSeconds }];
   if (f.kind === "series") return f.seconds.map((seconds) => ({ id, seconds, rest: f.restSeconds }));
-  throw new GeneratorError(`Übung ${id}: eigene Rundenlänge braucht ein Zeit- oder Serienformat`);
+  if (f.kind === "per-side") return [{ id, seconds: f.seconds * 2, rest: undefined }];
+  throw new GeneratorError(`Übung ${id}: eigene Rundenlänge braucht ein Zeit-, Seiten- oder Serienformat`);
 }
 
 /** Zweiter Durchgang für Blöcke mit Rundenlänge je Übung: nach der Auswahl stehen die echten Längen fest. */
 function refineRounds(blocks: Block[], templates: readonly BlockTemplate[], targetSeconds: number): Block[] {
   if (!blocks.some((b) => b.exerciseSeconds)) return blocks;
-  const items = blocks.map((b, i) => ({ ...b, ...(b.exerciseSeconds && templates[i]?.scale ? { scale: templates[i].scale } : {}) }));
+  const passesOf = (i: number): number | undefined => templates[i]?.exercises?.passes;
+  const items = blocks.map((b, i) => ({
+    ...b,
+    ...(b.exerciseSeconds && !passesOf(i) && templates[i]?.scale ? { scale: templates[i]?.scale } : {}),
+  }));
   const rounds = scaleRounds(items, targetSeconds);
-  return blocks.map((b, i) => ({ ...b, rounds: rounds[i] as number }));
+  const result = blocks.map((b, i) => ({ ...b, rounds: rounds[i] as number }));
+
+  // Blöcke mit Durchgängen (Aufwärmen, Cooldown) skalieren in ganzen Durchgängen.
+  result.forEach((b, i) => {
+    const scale = templates[i]?.scale;
+    if (!b.exerciseSeconds || !passesOf(i) || !scale) return;
+    const entries = b.exerciseIds.length;
+    const others = result.reduce((sum, other, j) => (j === i ? sum : sum + blockSeconds(other)), 0);
+    let best = { rounds: b.rounds, gap: Number.POSITIVE_INFINITY };
+    for (let k = 1; entries * k <= scale.max; k++) {
+      const gap = Math.abs(blockSeconds({ ...b, rounds: entries * k }) + others - targetSeconds);
+      if (gap < best.gap) best = { rounds: entries * k, gap };
+    }
+    b.rounds = best.rounds;
+  });
+  return result;
 }
 
 function buildBlock(t: BlockTemplate, rounds: number, id: string, ctx: BuildContext): Block {
@@ -270,10 +290,11 @@ function buildBlock(t: BlockTemplate, rounds: number, id: string, ctx: BuildCont
   const picked = pickExercises(t, ctx);
   const entries = t.exercises?.ownSeconds ? picked.flatMap((id) => roundEntries(id, ctx.library)) : undefined;
   const exerciseIds = entries ? entries.map((e) => e.id) : picked;
+  const passes = t.exercises?.passes;
   return {
     id,
     type: t.type,
-    rounds,
+    rounds: entries && passes ? entries.length * passes : rounds,
     roundSeconds: t.roundSeconds,
     restSeconds: t.restSeconds,
     announceMode: t.announceMode,

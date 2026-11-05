@@ -112,11 +112,16 @@ describe("generateTraining", () => {
 
   it("bevorzugt Kombis zum Fokus-Thema", () => {
     const byId = new Map(library.combos.map((c) => [c.id, c]));
-    const training = generateTraining(input({ focusTheme: "Lowkick setzen" }), library);
-    expect(training.focusTheme).toBe("Lowkick setzen");
-    const ids = training.blocks.filter((b) => b.focusTheme).flatMap((b) => b.comboIds);
-    const onTheme = ids.filter((id) => byId.get(id)?.themes.includes("Lowkick setzen")).length;
-    expect(onTheme).toBeGreaterThan(ids.length / 3);
+    let total = 0;
+    let onTheme = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const training = generateTraining(input({ focusTheme: "Lowkick setzen", seed }), library);
+      expect(training.focusTheme).toBe("Lowkick setzen");
+      const ids = training.blocks.filter((b) => b.focusTheme).flatMap((b) => b.comboIds);
+      total += ids.length;
+      onTheme += ids.filter((id) => byId.get(id)?.themes.includes("Lowkick setzen")).length;
+    }
+    expect(onTheme).toBeGreaterThan(total / 3);
   });
 
   it("wählt Drills zum Fokus-Thema", () => {

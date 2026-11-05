@@ -27,7 +27,7 @@ describe("SettingsService", () => {
   it("speichert und lädt unverändert", async () => {
     const { service } = make();
     let s = (await service.load()).settings;
-    s = setPreferences(s, { style: "boxing", level: 3 });
+    s = setPreferences(s, { style: "boxing", level: 3, stance: "southpaw" });
     s = updateProfile(s, "home", { name: "Wohnzimmer", tags: ["mat", "dumbbells"] });
     s = addProfile(s, { name: "Garage", tags: ["heavy-bag"] }, "custom-1");
     await service.save(s);
@@ -64,6 +64,14 @@ describe("SettingsService", () => {
     const { service, db } = make();
     await db.settings.put({ id: "main", style: "mma", level: 2, equipmentProfiles: [] });
     await expect(service.load()).rejects.toThrow(SettingsError);
+  });
+
+  it("liest Einstellungen ohne Auslage aus einer älteren Version", async () => {
+    const { service, db } = make();
+    await db.settings.put({ id: "main", style: "boxing", level: 1, equipmentProfiles: [{ id: "a", name: "Park", tags: [] }] });
+    const { settings } = await service.load();
+    expect(settings.stance).toBe("orthodox");
+    expect(settings.style).toBe("boxing");
   });
 
   it("gibt dem Aufrufer keine gemeinsame Vorbelegung heraus", async () => {

@@ -46,10 +46,14 @@ describe("buildTimeline", () => {
 
   it("gesamtdauer = Blockzeit plus Übergang pro Block", () => {
     const t = training();
-    const blockTime = t.blocks.reduce(
-      (s, b) => s + b.rounds * b.roundSeconds + Math.max(b.rounds - 1, 0) * b.restSeconds,
-      0,
-    );
+    const blockTime = t.blocks.reduce((sum, b) => {
+      let time = 0;
+      for (let r = 0; r < b.rounds; r++) {
+        time += b.exerciseSeconds?.[r % b.exerciseSeconds.length] ?? b.roundSeconds;
+        if (r < b.rounds - 1) time += b.exerciseRest?.[r % b.exerciseRest.length] ?? b.restSeconds;
+      }
+      return sum + time;
+    }, 0);
     expect(build(t).totalSeconds).toBe(blockTime + t.blocks.length * TRANSITION_SECONDS);
   });
 

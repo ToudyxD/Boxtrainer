@@ -1,5 +1,5 @@
 import { BLOCK_LABELS } from "./cues";
-import type { AnnounceMode, BlockType, BodyGroup, EquipmentTag, ExerciseCategory, Training, TrainingType } from "./models";
+import type { AnnounceMode, BlockType, BodyTarget, EquipmentTag, ExerciseCategory, Training, TrainingType } from "./models";
 
 export type TemplateTrainingType = Exclude<TrainingType, "single">;
 
@@ -30,9 +30,11 @@ export interface BlockTemplate {
     maxIntensity?: 1 | 2 | 3;
     phase?: "warmup" | "cooldown";
     /** Körperbereiche, die die Auswahl möglichst alle abdecken soll. */
-    cover?: BodyGroup[];
-    /** Jede Übung bringt ihre Rundenlänge aus ihrem Zeitformat mit. */
+    cover?: BodyTarget[];
+    /** Jede Übung bringt ihre Rundenlänge aus ihrem Zeitformat mit (pro Seite verdoppelt). */
     ownSeconds?: boolean;
+    /** Wie oft die gewählten Übungen durchlaufen werden; die Rundenzahl ergibt sich daraus. */
+    passes?: number;
   };
 }
 
@@ -42,26 +44,53 @@ export interface TrainingTemplate {
   blocks: BlockTemplate[];
 }
 
+type ExerciseSpec = NonNullable<BlockTemplate["exercises"]>;
+
+const coreExercises: ExerciseSpec = { categories: ["core"], count: 4, cover: ["abs", "obliques"] };
+const strengthExercises: ExerciseSpec = { categories: ["strength"], count: 4, cover: ["legs", "back", "upper", "core"] };
+const circuitExercises: ExerciseSpec = {
+  categories: ["strength", "conditioning", "core"],
+  count: 6,
+  cover: ["legs", "upper", "core"],
+};
+
+// Rundenzahl und -länge sind Richtwerte für die Skalierung; die echten Werte kommen aus den gewählten Übungen.
 const warmup: BlockTemplate = {
   key: "warmup",
   type: "warmup",
-  rounds: 12,
-  roundSeconds: 45,
+  rounds: 16,
+  roundSeconds: 33,
   restSeconds: 0,
   announceMode: "cues-only",
   announceDensity: 1,
-  exercises: { categories: ["mobility", "conditioning"], count: 6, maxIntensity: 2, phase: "warmup", cover: ["legs", "upper", "core"] },
+  exercises: {
+    categories: ["mobility", "conditioning"],
+    count: 8,
+    maxIntensity: 2,
+    phase: "warmup",
+    cover: ["legs", "upper", "core"],
+    ownSeconds: true,
+    passes: 2,
+  },
 };
 
-const cooldown = (rounds: number): BlockTemplate => ({
+const cooldown = (): BlockTemplate => ({
   key: "cooldown",
   type: "cooldown",
-  rounds,
-  roundSeconds: 60,
+  rounds: 7,
+  roundSeconds: 49,
   restSeconds: 0,
   announceMode: "cues-only",
   announceDensity: 1,
-  exercises: { categories: ["mobility"], count: 7, maxIntensity: 1, phase: "cooldown", cover: ["legs", "upper", "core"] },
+  exercises: {
+    categories: ["mobility"],
+    count: 7,
+    maxIntensity: 1,
+    phase: "cooldown",
+    cover: ["legs", "upper", "core"],
+    ownSeconds: true,
+    passes: 1,
+  },
 });
 
 const shadow = (key: string, rounds: number, density: 1 | 2 | 3, scale: BlockTemplate["scale"], usesFocus = false): BlockTemplate => ({
@@ -149,9 +178,9 @@ export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> 
         restSeconds: 15,
         announceMode: "cues-only",
         announceDensity: 1,
-        exercises: { categories: ["core"], count: 4 },
+        exercises: coreExercises,
       },
-      cooldown(7),
+      cooldown(),
     ],
   },
   power: {
@@ -170,9 +199,9 @@ export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> 
         restSeconds: 15,
         announceMode: "cues-only",
         announceDensity: 1,
-        exercises: { categories: ["core"], count: 4 },
+        exercises: coreExercises,
       },
-      cooldown(7),
+      cooldown(),
     ],
   },
   stamina: {
@@ -193,7 +222,7 @@ export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> 
         scale: { min: 4, max: 10 },
         exercises: { categories: ["conditioning"], count: 4 },
       },
-      cooldown(8),
+      cooldown(),
     ],
   },
   strength: {
@@ -211,7 +240,7 @@ export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> 
         announceMode: "cues-only",
         announceDensity: 1,
         scale: { min: 8, max: 16, step: 4 },
-        exercises: { categories: ["strength"], count: 4 },
+        exercises: strengthExercises,
       },
       {
         key: "core",
@@ -221,9 +250,9 @@ export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> 
         restSeconds: 15,
         announceMode: "cues-only",
         announceDensity: 1,
-        exercises: { categories: ["core"], count: 4 },
+        exercises: coreExercises,
       },
-      cooldown(7),
+      cooldown(),
     ],
   },
   "strength-endurance": {
@@ -240,10 +269,10 @@ export const TRAINING_TEMPLATES: Record<TemplateTrainingType, TrainingTemplate> 
         announceMode: "cues-only",
         announceDensity: 1,
         scale: { min: 18, max: 42, step: 6 },
-        exercises: { categories: ["strength", "conditioning", "core"], count: 6 },
+        exercises: circuitExercises,
       },
       bag("finisher", 3, 120, 60, 3, { min: 2, max: 5 }),
-      cooldown(7),
+      cooldown(),
     ],
   },
 };
@@ -274,7 +303,7 @@ export const BLOCK_TEMPLATES: Record<BlockType, BlockTemplate> = {
     announceMode: "cues-only",
     announceDensity: 1,
     scale: { min: 4, max: 20 },
-    exercises: { categories: ["core"], count: 4 },
+    exercises: coreExercises,
   },
   conditioning: {
     key: "conditioning",
@@ -296,7 +325,7 @@ export const BLOCK_TEMPLATES: Record<BlockType, BlockTemplate> = {
     announceMode: "cues-only",
     announceDensity: 1,
     scale: { min: 4, max: 20, step: 4 },
-    exercises: { categories: ["strength"], count: 4 },
+    exercises: strengthExercises,
   },
   circuit: {
     key: "circuit",
@@ -307,10 +336,10 @@ export const BLOCK_TEMPLATES: Record<BlockType, BlockTemplate> = {
     announceMode: "cues-only",
     announceDensity: 1,
     scale: { min: 6, max: 42, step: 6 },
-    exercises: { categories: ["strength", "conditioning", "core"], count: 6 },
+    exercises: circuitExercises,
   },
-  warmup: { ...warmup, scale: { min: 6, max: 24, step: 6 } },
-  cooldown: { ...cooldown(7), scale: { min: 5, max: 20 } },
+  warmup: { ...warmup, scale: { min: 8, max: 60 } },
+  cooldown: { ...cooldown(), scale: { min: 7, max: 40 } },
 };
 
 export const MIN_ROUNDS = 1;

@@ -1,10 +1,11 @@
-import type { EquipmentProfile, EquipmentTag, Level, Style } from "./models";
+import type { EquipmentProfile, EquipmentTag, Level, Stance, Style } from "./models";
 
 export class SettingsError extends Error {}
 
 export interface Settings {
   style: Style;
   level: Level;
+  stance: Stance;
   equipmentProfiles: EquipmentProfile[];
 }
 
@@ -37,11 +38,12 @@ export const MAX_PROFILES = 10;
 
 const STYLES: readonly Style[] = ["boxing", "kickboxing"];
 const LEVELS: readonly Level[] = [1, 2, 3];
+const STANCES: readonly Stance[] = ["orthodox", "southpaw"];
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 export function defaultSettings(defaults: readonly EquipmentProfile[]): Settings {
-  return validateSettings({ style: "kickboxing", level: 2, equipmentProfiles: defaults.map((p) => ({ ...p, tags: [...p.tags] })) });
+  return validateSettings({ style: "kickboxing", level: 2, stance: "orthodox", equipmentProfiles: defaults.map((p) => ({ ...p, tags: [...p.tags] })) });
 }
 
 function checkStyle(style: unknown): Style {
@@ -52,6 +54,11 @@ function checkStyle(style: unknown): Style {
 function checkLevel(level: unknown): Level {
   if (!LEVELS.includes(level as Level)) throw new SettingsError(`Ungültiges Level: ${String(level)}`);
   return level as Level;
+}
+
+function checkStance(stance: unknown): Stance {
+  if (!STANCES.includes(stance as Stance)) throw new SettingsError(`Unbekannte Auslage: ${String(stance)}`);
+  return stance as Stance;
 }
 
 function checkName(name: unknown): string {
@@ -101,11 +108,13 @@ export function validateSettings(raw: unknown): Settings {
   return {
     style: checkStyle(raw["style"]),
     level: checkLevel(raw["level"]),
+    // Einstellungen aus der Zeit vor der Auslage haben das Feld noch nicht.
+    stance: raw["stance"] === undefined ? "orthodox" : checkStance(raw["stance"]),
     equipmentProfiles: checkProfiles(raw["equipmentProfiles"]),
   };
 }
 
-export function setPreferences(settings: Settings, patch: { style?: Style; level?: Level }): Settings {
+export function setPreferences(settings: Settings, patch: { style?: Style; level?: Level; stance?: Stance }): Settings {
   return validateSettings({ ...settings, ...patch });
 }
 

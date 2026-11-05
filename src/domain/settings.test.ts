@@ -75,6 +75,28 @@ describe("validateSettings", () => {
   });
 });
 
+describe("Auslage", () => {
+  it("ist standardmäßig Rechtsauslage", () => {
+    expect(base().stance).toBe("orthodox");
+  });
+
+  it("wird bei Einstellungen ohne Auslage mit der Vorgabe ergänzt", () => {
+    const { stance: _stance, ...old } = base();
+    expect(validateSettings(old).stance).toBe("orthodox");
+  });
+
+  it("lehnt unbekannte Auslagen ab", () => {
+    expect(() => validateSettings({ ...base(), stance: "switch" })).toThrow(/Unbekannte Auslage/);
+    expect(() => validateSettings({ ...base(), stance: null })).toThrow(SettingsError);
+  });
+
+  it("lässt sich setzen, ohne Stil und Level zu ändern", () => {
+    const s = setPreferences(base(), { stance: "southpaw" });
+    expect([s.stance, s.style, s.level]).toEqual(["southpaw", "kickboxing", 2]);
+    expect(() => setPreferences(base(), { stance: "x" as "orthodox" })).toThrow(SettingsError);
+  });
+});
+
 describe("setPreferences", () => {
   it("ändert Stil und Level", () => {
     const s = setPreferences(base(), { style: "boxing", level: 3 });

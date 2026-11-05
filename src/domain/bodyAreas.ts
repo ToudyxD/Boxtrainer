@@ -1,4 +1,4 @@
-import type { BodyArea, BodyGroup, Exercise } from "./models";
+import type { BodyArea, BodyGroup, BodyTarget, Exercise } from "./models";
 
 export const BODY_AREA_GROUP: Record<BodyArea, BodyGroup> = {
   "thigh-front": "legs",
@@ -51,4 +51,9 @@ export const BODY_AREAS = Object.keys(BODY_AREA_GROUP) as BodyArea[];
 /** Hauptbereiche, die eine Übung beansprucht. */
 export function exerciseGroups(exercise: Pick<Exercise, "bodyAreas">): Set<BodyGroup> {
   return new Set(exercise.bodyAreas.map((area) => BODY_AREA_GROUP[area]));
+}
+
+/** Beansprucht die Übung den Haupt- oder Unterbereich? */
+export function exerciseCovers(exercise: Pick<Exercise, "bodyAreas">, target: BodyTarget): boolean {
+  return exerciseGroups(exercise).has(target as BodyGroup) || exercise.bodyAreas.includes(target as BodyArea);
 }

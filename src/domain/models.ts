@@ -1,5 +1,6 @@
 export type Style = "boxing" | "kickboxing";
 export type Level = 1 | 2 | 3;
+export type Stance = "orthodox" | "southpaw";
 export type Side = "front" | "rear";
 
 export type TechniqueCategory = "punch" | "kick" | "knee" | "defense" | "footwork";
@@ -62,6 +63,9 @@ export type BodyArea =
   | "full-body";
 
 export type BodyGroup = "legs" | "upper" | "arms" | "core" | "full";
+
+/** Ein Hauptbereich oder ein Unterbereich. */
+export type BodyTarget = BodyGroup | BodyArea;
 
 export type ExerciseFormat =
   | { kind: "time"; seconds: number; restSeconds?: number }

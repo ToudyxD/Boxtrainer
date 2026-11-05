@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DEFAULT_EQUIPMENT_PROFILES } from "../content";
-import type { EquipmentProfile, EquipmentTag, Level, Style } from "../domain/models";
+import type { EquipmentProfile, EquipmentTag, Level, Stance, Style } from "../domain/models";
 import {
   EQUIPMENT_LABELS,
   EQUIPMENT_TAGS,
@@ -14,7 +14,7 @@ import {
   updateProfile,
   type Settings,
 } from "../domain/settings";
-import { LEVEL_LABELS, STYLE_LABELS } from "./labels";
+import { LEVEL_LABELS, STANCE_LABELS, STYLE_LABELS } from "./labels";
 import { useSettings } from "./SettingsContext";
 
 interface Draft {
@@ -178,8 +178,24 @@ export function SettingsScreen() {
             ))}
           </select>
         </label>
+        <label className="field">
+          <span>Auslage</span>
+          <select
+            value={settings.stance}
+            onChange={(e) => void apply((s) => setPreferences(s, { stance: e.target.value as Stance }))}
+          >
+            {Object.entries(STANCE_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
-      <p className="hint">Stil und Level bestimmen, welche Kombis und Übungen in deinen Trainings vorkommen.</p>
+      <p className="hint">
+        Stil und Level bestimmen, welche Kombis und Übungen vorkommen. Die Auslage wird im Profil gespeichert; die Ansagen
+        sagen vorne und hinten und ändern sich dadurch nicht.
+      </p>
       {!draft && error && <p className="error">{error}</p>}
 
       <h2 className="group-title">Orte und Equipment</h2>
