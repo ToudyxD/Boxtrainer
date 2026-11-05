@@ -1,5 +1,4 @@
 export type Style = "boxing" | "kickboxing";
-export type Stance = "southpaw" | "orthodox";
 export type Level = 1 | 2 | 3;
 export type Side = "front" | "rear";
 
@@ -132,13 +131,6 @@ export interface Training {
   targetMinutes: number;
   focusTheme?: string;
   blocks: Block[];
-}
-
-export interface Profile {
-  style: Style;
-  stance: Stance;
-  level: Level;
-  activeEquipmentProfileId: string;
 }
 
 export interface Session {
