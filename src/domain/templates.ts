@@ -32,12 +32,12 @@ export interface TrainingTemplate {
 const warmup: BlockTemplate = {
   key: "warmup",
   type: "warmup",
-  rounds: 10,
-  roundSeconds: 60,
+  rounds: 12,
+  roundSeconds: 45,
   restSeconds: 0,
   announceMode: "cues-only",
   announceDensity: 1,
-  exercises: { categories: ["mobility", "conditioning"], count: 5, maxIntensity: 2, phase: "warmup" },
+  exercises: { categories: ["mobility", "conditioning"], count: 6, maxIntensity: 2, phase: "warmup" },
 };
 
 const cooldown = (rounds: number): BlockTemplate => ({
@@ -251,7 +251,7 @@ export const BLOCK_TEMPLATES: Record<BlockType, BlockTemplate> = {
     scale: { min: 6, max: 42, step: 6 },
     exercises: { categories: ["strength", "conditioning", "core"], count: 6 },
   },
-  warmup: { ...warmup, scale: { min: 5, max: 20 } },
+  warmup: { ...warmup, scale: { min: 6, max: 24, step: 6 } },
   cooldown: { ...cooldown(7), scale: { min: 5, max: 20 } },
 };
 
