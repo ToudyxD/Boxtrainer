@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { DEFAULT_EQUIPMENT_PROFILES, loadLibrary } from "../content";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { loadLibrary } from "../content";
 import { BLOCK_LABELS } from "../domain/cues";
 import {
   GeneratorError,
@@ -27,6 +27,8 @@ import {
 } from "../domain/templates";
 import { getSessionService } from "../services/appServices";
 import { blockCategory } from "./blockStyle";
+import { LEVEL_LABELS, STYLE_LABELS } from "./labels";
+import { useSettings } from "./SettingsContext";
 import { useStoredState } from "./useStoredState";
 
 export interface StartRequest {
@@ -76,8 +78,6 @@ const FULL_MINUTES = [45, 60, 75, 90];
 const SINGLE_MINUTES = [10, 15, 20, 30];
 const BLOCK_TYPES = Object.keys(BLOCK_TEMPLATES) as BlockType[];
 
-const LEVEL_LABELS: Record<Level, string> = { 1: "Grundlagen", 2: "Aufbau", 3: "Fortgeschritten" };
-const STYLE_LABELS: Record<Style, string> = { boxing: "Boxen", kickboxing: "Kickboxen (K-1)" };
 const newSeed = (): number => Date.now() % 1_000_000;
 
 type Generated = { ok: true; training: Training; seed: number } | { ok: false; error: string };
@@ -108,9 +108,11 @@ function restLabel(b: Block): string {
   return min === max ? `, ${max} s Pause` : `, ${min}–${max} s Pause`;
 }
 
-export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void }) {
+export function ConfigScreen({ onStart, onOpenSettings }: { onStart: (req: StartRequest) => void; onOpenSettings: () => void }) {
   const library = useMemo(() => loadLibrary(), []);
-  const [config, setConfig] = useStoredState<Config>("boxtrainer.config.v1", DEFAULT_CONFIG);
+  const [stored, setConfig] = useStoredState<Config>("boxtrainer.config.v1", DEFAULT_CONFIG);
+  const { settings } = useSettings();
+  const config: Config = { ...stored, style: settings.style, level: settings.level };
   const [generated, setGenerated] = useState<Generated | null>(null);
   const [editError, setEditError] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -133,7 +135,7 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
   const focusFor = (cfg: Config): string =>
     availableThemes(library, cfg.style, cfg.level).includes(cfg.focus) ? cfg.focus : "";
   const equipmentFor = (cfg: Config) =>
-    DEFAULT_EQUIPMENT_PROFILES.find((p) => p.id === cfg.equipmentId) ?? DEFAULT_EQUIPMENT_PROFILES[0]!;
+    settings.equipmentProfiles.find((p) => p.id === cfg.equipmentId) ?? settings.equipmentProfiles[0]!;
   const contentInput = (cfg: Config): ContentInput => ({
     equipment: equipmentFor(cfg),
     style: cfg.style,
@@ -171,6 +173,14 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
       setGenerated({ ok: false, error: asGeneratorError(err) });
     }
   };
+
+  const settingsKey = JSON.stringify(settings);
+  const settingsSeen = useRef(settingsKey);
+  useEffect(() => {
+    if (settingsSeen.current === settingsKey) return;
+    settingsSeen.current = settingsKey;
+    if (generated) generate(config);
+  }, [settingsKey]);
 
   const update = (patch: Partial<Config>): void => {
     const next = { ...config, ...patch };
@@ -332,8 +342,8 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
           </Field>
         )}
         <Field label="Ort">
-          <select value={config.equipmentId} onChange={(e) => update({ equipmentId: e.target.value })}>
-            {DEFAULT_EQUIPMENT_PROFILES.map((p) => (
+          <select value={equipmentFor(config).id} onChange={(e) => update({ equipmentId: e.target.value })}>
+            {settings.equipmentProfiles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
@@ -359,24 +369,12 @@ export function ConfigScreen({ onStart }: { onStart: (req: StartRequest) => void
             </select>
           )}
         </Field>
-        <Field label="Stil">
-          <select value={config.style} onChange={(e) => update({ style: e.target.value as Style })}>
-            {Object.entries(STYLE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Level">
-          <select value={config.level} onChange={(e) => update({ level: Number(e.target.value) as Level })}>
-            {([1, 2, 3] as const).map((l) => (
-              <option key={l} value={l}>
-                {LEVEL_LABELS[l]}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <button className="field field-link" onClick={onOpenSettings}>
+          <span>Profil</span>
+          <span className="field-value">
+            {STYLE_LABELS[settings.style]}, {LEVEL_LABELS[settings.level]}
+          </span>
+        </button>
         {showFocus && (
           <Field label="Fokus">
             <select value={focusFor(config)} onChange={(e) => update({ focus: e.target.value })}>

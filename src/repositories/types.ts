@@ -1,5 +1,11 @@
 import type { Session } from "../domain/models";
 
+export interface SettingsRepository {
+  /** Rohdaten wie gespeichert, oder undefined, wenn noch nichts gespeichert wurde. */
+  load(): Promise<unknown | undefined>;
+  save(settings: unknown): Promise<void>;
+}
+
 export interface SessionRepository {
   /** Wirft, wenn die ID bereits existiert. */
   add(session: Session): Promise<void>;
